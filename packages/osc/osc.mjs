@@ -16,7 +16,6 @@ function connect() {
       const osc = new OSC();
       osc.open();
       osc.on('open', () => {
-        console.log(osc.options?.plugin);
         const url = osc.options?.plugin?.socket?.url;
         logger(`[osc] connected${url ? ` to ${url}` : ''}`);
         resolve(osc);

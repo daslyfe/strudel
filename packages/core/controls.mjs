@@ -8,6 +8,43 @@ import { Pattern, register, sequence } from './pattern.mjs';
 import { zipWith } from './util.mjs';
 
 const controls = {};
+const custom_params = [
+  /**
+   * change the dsp model of the braids Ugen
+   *
+   * @name model
+   * @param {number | Pattern} model
+   * @example
+   * n("0,4,7").s("braids").model("<0 .4 .6 1>").osc()
+   * @superdirtOnly
+   *
+   */
+  ['model'],
+
+  /**
+   * timbre param of the braids Ugen
+   *
+   * @name timbre
+   * @param {number | Pattern} timbre
+   * @example
+   * n("0,4,7").s("braids").timbre("<0 .4 .6 1>").osc()
+   * @superdirtOnly
+   *
+   */
+  ['timbre'],
+
+  /**
+   * color param of the braids Ugen
+   *
+   * @name color
+   * @param {number | Pattern} color
+   * @example
+   * n("0,4,7").s("braids").color("<0 .4 .6 1>").osc()
+   * @superdirtOnly
+   *
+   */
+  ['color'],
+];
 const generic_params = [
   /**
    * Select a sound / sample by name. When using mininotation, you can also optionally supply 'n' and 'gain' parameters
@@ -808,7 +845,7 @@ controls.createParam = function (names) {
   return func;
 };
 
-generic_params.forEach(([names, ...aliases]) => {
+[...generic_params, ...custom_params].forEach(([names, ...aliases]) => {
   const name = Array.isArray(names) ? names[0] : names;
   controls[name] = controls.createParam(names);
 

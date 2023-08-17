@@ -15,6 +15,7 @@ function connect() {
       const osc = new OSC();
       osc.open();
       osc.on('open', () => {
+        console.log(osc.options?.plugin);
         const url = osc.options?.plugin?.socket?.url;
         logger(`[osc] connected${url ? ` to ${url}` : ''}`);
         resolve(osc);
@@ -61,10 +62,12 @@ Pattern.prototype.osc = function () {
     controls.n && (controls.n = parseNumeral(controls.n));
     controls.note && (controls.note = parseNumeral(controls.note));
     const keyvals = Object.entries(controls).flat();
-    const ts = Math.floor(startedAt + (time + latency) * 1000);
+    const ts = Math.floor(startedAt + time * 1000);
     const message = new OSC.Message('/dirt/play', ...keyvals);
     const bundle = new OSC.Bundle([message], ts);
-    bundle.timestamp(ts); // workaround for https://github.com/adzialocha/osc-js/issues/60
+    // bundle.
+    //bundle.timestamp(ts); // workaround for https://github.com/adzialocha/osc-js/issues/60
+    console.log(bundle.timestamp);
     osc.send(bundle);
   });
 };

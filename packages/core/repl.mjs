@@ -4,6 +4,7 @@ import { logger } from './logger.mjs';
 import { setTime } from './time.mjs';
 import { evalScope } from './evaluate.mjs';
 import { register } from './pattern.mjs';
+import { registerJadeMethods } from '../../jade/jademethods.mjs';
 
 export function repl({
   interval,
@@ -51,6 +52,7 @@ export function repl({
   const pause = () => scheduler.pause();
   const setCps = (cps) => scheduler.setCps(cps);
   const setCpm = (cpm) => scheduler.setCps(cpm / 60);
+  registerJadeMethods();
 
   // the following functions use the cps value, which is why they are defined here..
   const loopAt = register('loopAt', (cycles, pat) => {

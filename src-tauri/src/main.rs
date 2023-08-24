@@ -15,7 +15,7 @@ fn main() {
         ::default()
         .targets([
           // LogTarget::LogDir,
-          LogTarget::Stdout,
+          // LogTarget::Stdout,
           // LogTarget::Webview,
         ])
         .build()
@@ -23,7 +23,8 @@ fn main() {
     .manage(midi::AsyncInputTx {
       inner: Mutex::new(async_input_tx),
     })
-    .invoke_handler(tauri::generate_handler![midi::js2rsMidi])
+    .invoke_handler(tauri::generate_handler![midi::send_tauri_midi_message])
+    .invoke_handler(tauri::generate_handler![testSend])
     .setup(|_app| {
       warn!("Setting up...");
       midi::init(async_input_rx);
@@ -31,4 +32,9 @@ fn main() {
     })
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
+}
+
+#[tauri::command]
+fn testSend() {
+  println!("{}", "sent a message!")
 }

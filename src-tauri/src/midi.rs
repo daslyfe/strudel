@@ -20,6 +20,7 @@ pub struct MidiNote {
   pub note_number: u8,
   pub velocity: u8,
   pub duration: u64,
+  pub offset: u64,
   pub cc: (bool, u8, u64),
 }
 
@@ -158,11 +159,12 @@ pub fn init(async_input_rx: mpsc::Receiver<(MidiNote, String)>) {
 }
 
 #[tauri::command]
-pub async fn js2rsMidi(
+pub async fn send_tauri_midi_message(
   midichan: u8,
   notenumber: u8,
   velocity: f64,
   duration: f64,
+  offset: f64,
   cc: (bool, u8, u64),
   output: String,
   state: tauri::State<'_, AsyncInputTx>
@@ -173,8 +175,11 @@ pub async fn js2rsMidi(
     note_number: notenumber,
     velocity: (velocity * 100.0) as u8,
     duration: duration as u64,
+    offset: offset as u64,
     cc,
   };
+
+  println!("play note{}", notenumber);
   async_proc_input_tx.send((note, output)).await.map_err(|e| e.to_string())
 }
 

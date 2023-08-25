@@ -3,6 +3,7 @@
 use log::warn;
 use tauri_plugin_log::LogTarget;
 mod midi;
+use midi::{ send_tauri_midi_message, test_send };
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
 
@@ -23,8 +24,8 @@ fn main() {
     .manage(midi::AsyncInputTx {
       inner: Mutex::new(async_input_tx),
     })
-    .invoke_handler(tauri::generate_handler![midi::send_tauri_midi_message])
-    .invoke_handler(tauri::generate_handler![testSend])
+    .invoke_handler(tauri::generate_handler![send_tauri_midi_message])
+    .invoke_handler(tauri::generate_handler![test_send])
     .setup(|_app| {
       warn!("Setting up...");
       midi::init(async_input_rx);
@@ -32,9 +33,4 @@ fn main() {
     })
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
-}
-
-#[tauri::command]
-fn testSend() {
-  println!("{}", "sent a message!")
 }

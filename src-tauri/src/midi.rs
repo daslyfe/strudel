@@ -197,9 +197,8 @@ async fn async_process_model(
 
 #[tauri::command]
 pub fn test_send(
-  midichan: u8,
   notenumber: u8,
-  velocity: f64,
+  velocity: u8,
   duration: u64,
   offset: u64,
   cc: (bool, u64, u64),
@@ -207,13 +206,38 @@ pub fn test_send(
   message: u8
 ) {
   const NOTE_ON_MSG: u8 = 0x90;
-  const VELOCITY: u8 = 0x64;
   const NOTE_OFF_MSG: u8 = 0x80;
   let midi_out = MidiOutput::new("tout").unwrap();
   let midi_out_ports = midi_out.ports();
-  let out_port = midi_out_ports.get(2).ok_or("No MIDI output ports available").unwrap();
-  let mut conn_out = midi_out.connect(out_port, "midir-test").unwrap();
-  let _ = conn_out.send(&[message, notenumber, VELOCITY]);
+  // let out_port = midi_out_ports.get(2).ok_or("No MIDI output ports available").unwrap();
+
+  let mut out_port = midi_out_ports.iter().find(|midi_port| {
+    let port_name = midi_out.port_name(midi_port).unwrap();
+    return port_name == output;
+  });
+
+  if midi_out_ports.len() == 0 {
+    println!("unable to find any midi ports");
+    return;
+  }
+
+  if out_port.is_none() {
+    out_port = midi_out_ports.iter().find(|midi_port| {
+      let port_name = midi_out.port_name(midi_port).unwrap();
+      return port_name.contains(&output);
+    });
+  }
+
+  if out_port.is_none() {
+    out_port = midi_out_ports.first();
+    println!("failed to find midi port {}", output);
+    print!(" connecting to {}", midi_out.port_name(out_port.unwrap()).unwrap());
+    return;
+  }
+
+  let mut conn_out = midi_out.connect(out_port.unwrap(), "midir-test").unwrap();
+  let _ = conn_out.send(&[message, notenumber, velocity]);
+
   // sleep(Duration::from_millis(offset));
   //let _ = conn_out.send(&[NOTE_ON_MSG, notenumber, VELOCITY]);
   // sleep(Duration::from_millis(duration));

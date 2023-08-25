@@ -8,6 +8,8 @@ import * as _WebMidi from 'webmidi';
 import { Pattern, isPattern, logger } from '@strudel.cycles/core';
 import { noteToMidi } from '@strudel.cycles/core';
 import { Note } from 'webmidi';
+import { playNote } from './tauriMidi.mjs';
+
 // if you use WebMidi from outside of this package, make sure to import that instance:
 export const { WebMidi } = _WebMidi;
 
@@ -88,28 +90,30 @@ Pattern.prototype.midi = function (output) {
     );
   }
 
-  enableWebMidi({
-    onEnabled: ({ outputs }) => {
-      const device = getDevice(output, outputs);
-      const otherOutputs = outputs.filter((o) => o.name !== device.name);
-      logger(
-        `Midi enabled! Using "${device.name}". ${
-          otherOutputs?.length ? `Also available: ${getMidiDeviceNamesString(otherOutputs)}` : ''
-        }`,
-      );
-    },
-    onDisconnected: ({ outputs }) =>
-      logger(`Midi device disconnected! Available: ${getMidiDeviceNamesString(outputs)}`),
-  });
+  // enableWebMidi({
+  //   onEnabled: ({ outputs }) => {
+  //     const device = getDevice(output, outputs);
+  //     const otherOutputs = outputs.filter((o) => o.name !== device.name);
+  //     logger(
+  //       `Midi enabled! Using "${device.name}". ${
+  //         otherOutputs?.length ? `Also available: ${getMidiDeviceNamesString(otherOutputs)}` : ''
+  //       }`,
+  //     );
+  //   },
+  //   onDisconnected: ({ outputs }) =>
+  //     logger(`Midi device disconnected! Available: ${getMidiDeviceNamesString(outputs)}`),
+  // });
 
   return this.onTrigger((time, hap, currentTime, cps) => {
+    const offset = (time - currentTime) * 1000;
+    playNote(hap, offset, output);
+    /** 
     if (!WebMidi.enabled) {
       return;
     }
     const device = getDevice(output, WebMidi.outputs);
     hap.ensureObjectValue();
 
-    const offset = (time - currentTime) * 1000;
     // passing a string with a +num into the webmidi api adds an offset to the current time https://webmidijs.org/api/classes/Output
     const timeOffsetString = `+${offset}`;
 
@@ -136,5 +140,6 @@ Pattern.prototype.midi = function (output) {
       const scaled = Math.round(ccv * 127);
       device.sendControlChange(ccn, scaled, midichan, { time: timeOffsetString });
     }
+    */
   });
 };

@@ -1,13 +1,11 @@
-use midir::{ MidiOutputConnection };
+use midir::{ MidiOutputConnection, MidiOutput };
 
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
-use tokio::time::{ timeout, Duration, sleep };
+use tokio::time::{ Duration, sleep };
 
 pub const NOTE_ON_MESSAGE: u8 = 0x90;
 pub const NOTE_OFF_MESSAGE: u8 = 0x80;
-pub const MIDI_CHANNEL_COUNT: u8 = 16;
-pub const MIDI_NOTE_COUNT: u8 = 128;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MidiNote {
@@ -36,6 +34,63 @@ impl MidiNote {
 
 pub struct AsyncInputTransmit {
   pub inner: Mutex<mpsc::Sender<(MidiNote, String)>>,
+}
+
+pub fn init(
+  async_input_receiver: mpsc::Receiver<(MidiNote, String)>,
+  mut async_output_receiver: mpsc::Receiver<(MidiNote, String)>,
+  async_output_transmitter: mpsc::Sender<(MidiNote, String)>
+) {
+  tauri::async_runtime::spawn(async move { async_process_model(async_input_receiver, async_output_transmitter).await });
+
+  tauri::async_runtime::spawn(async move {
+    let midi_out = MidiOutput::new("strudel").unwrap();
+    let out_ports = midi_out.ports();
+    if out_ports.len() == 0 {
+      println!(" No MIDI devices found. Connect a device or enable IAC Driver.");
+      return;
+    }
+    println!("Found {} midi devices!", out_ports.len());
+    out_ports.iter().for_each(|midi_port| {
+      let port_name = midi_out.port_name(midi_port).unwrap();
+      println!("{}", port_name);
+    });
+
+    loop {
+      if let Some(package) = async_output_receiver.recv().await {
+        let (mut note, requested_output_port_name) = package;
+
+        // create a non blocking async process to play the note at the correct time
+        tokio::spawn(async move {
+          let midi_out = MidiOutput::new("strudel").unwrap();
+          let out_ports = midi_out.ports();
+
+          let mut out_port = out_ports.iter().find(|midi_port| {
+            let port_name = midi_out.port_name(midi_port).unwrap();
+            return port_name == requested_output_port_name;
+          });
+
+          if out_port.is_none() {
+            out_port = out_ports.iter().find(|midi_port| {
+              let port_name = midi_out.port_name(midi_port).unwrap();
+              return port_name.contains(&requested_output_port_name);
+            });
+          }
+
+          if out_port.is_none() {
+            println!("failed to find midi device: {}", requested_output_port_name);
+            return;
+          }
+
+          let mut out_con: MidiOutputConnection = midi_out.connect(out_port.unwrap(), "strudel-connections").unwrap();
+          sleep(Duration::from_millis(note.offset)).await;
+          note.start(&mut out_con);
+          sleep(Duration::from_millis(note.duration)).await;
+          note.stop(&mut out_con);
+        });
+      }
+    }
+  });
 }
 
 pub async fn async_process_model(

@@ -2,6 +2,7 @@ use midir::{ MidiOutputConnection };
 
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
+use tokio::time::{ timeout, Duration, sleep };
 
 pub const NOTE_ON_MESSAGE: u8 = 0x90;
 pub const NOTE_OFF_MESSAGE: u8 = 0x80;
@@ -63,6 +64,7 @@ pub async fn sendmidi(
   println!("test send");
 
   let async_proc_input_tx = state.inner.lock().await;
+
   let note = MidiNote {
     channel: midichan.saturating_sub(1),
     note_number: notenumber,
@@ -71,5 +73,6 @@ pub async fn sendmidi(
     cc,
     offset,
   };
+
   async_proc_input_tx.send((note, outputport)).await.map_err(|e| e.to_string())
 }

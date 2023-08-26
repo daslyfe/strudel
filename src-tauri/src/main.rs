@@ -53,23 +53,47 @@ fn main() {
       tauri::async_runtime::spawn(async move {
         let midi_out = MidiOutput::new("strudel").unwrap();
         let out_ports = midi_out.ports();
-
         if out_ports.len() == 0 {
-          println!("unable to find any midi ports");
+          println!(" No MIDI devices found. Connect a device or enable IAC Driver.");
           return;
         }
-        let out_port = out_ports.get(2).ok_or("No MIDI output ports available").unwrap();
-        let mut x = 0;
-        let mut out_con: MidiOutputConnection = midi_out.connect(out_port, "strudel-connections").unwrap();
+        println!("Found {} midi devices!", out_ports.len());
+        out_ports.iter().for_each(|midi_port| {
+          let port_name = midi_out.port_name(midi_port).unwrap();
+          println!("{}", port_name);
+        });
+        println!("Hint: use .midi('device name').midichan(channel) to send notes and cc over midi");
+
         loop {
           if let Some(package) = async_output_recieve.recv().await {
             let (mut note, requested_output_port_name) = package;
 
+            // create a non blocking async process to play the note at the correct time
             tokio::spawn(async move {
               let midi_out = MidiOutput::new("strudel").unwrap();
               let out_ports = midi_out.ports();
-              let out_port = out_ports.get(2).ok_or("No MIDI output ports available").unwrap();
-              let mut out_con: MidiOutputConnection = midi_out.connect(out_port, "strudel-connections").unwrap();
+
+              let mut out_port = out_ports.iter().find(|midi_port| {
+                let port_name = midi_out.port_name(midi_port).unwrap();
+                return port_name == requested_output_port_name;
+              });
+
+              if out_port.is_none() {
+                out_port = out_ports.iter().find(|midi_port| {
+                  let port_name = midi_out.port_name(midi_port).unwrap();
+                  return port_name.contains(&requested_output_port_name);
+                });
+              }
+
+              if out_port.is_none() {
+                println!("failed to find midi device: {}", requested_output_port_name);
+                return;
+              }
+
+              // let out_port = out_ports.get(2).ok_or("No MIDI output ports available").unwrap();
+              let mut out_con: MidiOutputConnection = midi_out
+                .connect(out_port.unwrap(), "strudel-connections")
+                .unwrap();
               sleep(Duration::from_millis(note.offset)).await;
               note.start(&mut out_con);
               sleep(Duration::from_millis(note.duration)).await;

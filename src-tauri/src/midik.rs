@@ -61,8 +61,6 @@ pub async fn sendmidi(
   midichan: u8,
   state: tauri::State<'_, AsyncInputTransmit>
 ) -> Result<(), String> {
-  println!("test send");
-
   let async_proc_input_tx = state.inner.lock().await;
 
   let note = MidiNote {

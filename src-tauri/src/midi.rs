@@ -7,7 +7,8 @@ use tokio::sync::mpsc;
 use tokio::sync::Mutex;
 
 use std::thread::sleep;
-use std::time::{ Duration, Instant };
+use std::time::{ Instant, Duration };
+use spin_sleep;
 
 pub const NOTE_ON_MESSAGE: u8 = 0x90;
 pub const NOTE_OFF_MESSAGE: u8 = 0x80;
@@ -84,16 +85,17 @@ pub fn init(async_input_rx: mpsc::Receiver<(MidiNote, String)>) {
 
       // Process new notes
       if let Some(package) = async_output_rx.recv().await {
-        let (mut note, requested_port_name) = package;
+        // let (mut note, requested_port_name) = package;
 
-        note.start(&mut conn_out);
-        let (is_cc, ccn, ccv) = note.cc;
-        if is_cc {
-          conn_out.send(&[note.channel + 176, ccn, ccv as u8]).unwrap();
-        }
-        let note_duration = Duration::from_millis(note.duration); // Replace with your note duration
-        let expiry = Instant::now() + note_duration;
-        active_notes.push_back(ActiveNote { note, expiry });
+        // note.start(&mut conn_out);
+        // let (is_cc, ccn, ccv) = note.cc;
+        // if is_cc {
+        //   conn_out.send(&[note.channel + 176, ccn, ccv as u8]).unwrap();
+        // }
+        // let note_duration = Duration::from_millis(note.duration); // Replace with your note duration
+        // let expiry = Instant::now() + note_duration;
+        // active_notes.push_back(ActiveNote { note, expiry });
+
         // if requested_port_name != port_name {
         //   let mut new_port: usize = 0;
 
@@ -240,7 +242,6 @@ pub fn test_send(
 
   // sleep(Duration::from_millis(offset));
   //let _ = conn_out.send(&[NOTE_ON_MSG, notenumber, VELOCITY]);
-  // sleep(Duration::from_millis(duration));
 
   //
 

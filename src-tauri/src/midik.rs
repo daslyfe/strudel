@@ -6,12 +6,11 @@ use midir::{ MidiOutputConnection, MidiOutput };
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
 use tokio::time::{ Duration, sleep, Instant };
-use std::time::{ SystemTime };
 
 pub const NOTE_ON_MESSAGE: u8 = 0x90;
 pub const NOTE_OFF_MESSAGE: u8 = 0x80;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct MidiNote {
   pub channel: u8,
   pub note_number: u8,
@@ -28,31 +27,31 @@ pub struct MidiMessage {
   pub instant: Instant,
   pub velocity: u8,
   pub offset: u64,
+  pub requested_out_port_name: String,
 }
 
 impl MidiMessage {
-  pub fn new_on_message(note: MidiNote) -> Self {
-    let now = Instant::now();
+  pub fn new_on_message(note: MidiNote, requested_out_port_name: String) -> Self {
     return Self {
       message: NOTE_ON_MESSAGE + note.channel,
       note_number: note.note_number,
       cc: note.cc,
-      instant: now,
+      instant: Instant::now(),
       velocity: note.velocity,
       offset: note.offset,
+      requested_out_port_name,
     };
   }
 
-  pub fn new_off_message(note: MidiNote) -> Self {
-    let now = Instant::now();
-
+  pub fn new_off_message(note: MidiNote, requested_out_port_name: String) -> Self {
     return Self {
       message: NOTE_OFF_MESSAGE + note.channel,
       note_number: note.note_number,
       cc: note.cc,
-      instant: now,
+      instant: Instant::now(),
       velocity: note.velocity,
       offset: note.duration + note.offset,
+      requested_out_port_name,
     };
   }
 }
@@ -83,22 +82,17 @@ pub fn init(
 ) {
   tauri::async_runtime::spawn(async move { async_process_model(async_input_receiver, async_output_transmitter).await });
   let active_notes: Arc<Mutex<VecDeque<MidiMessage>>> = Arc::new(Mutex::new(VecDeque::new()));
-  // tauri::async_runtime::spawn(async move {
-  //   loop {
-  //     let x = active_notes.lock().await;
-  //     println!("{}", x.len());
-  //   }
-  // });
+
   let active_notes_clone = Arc::clone(&active_notes);
   tauri::async_runtime::spawn(async move {
     loop {
       if let Some(package) = async_output_receiver.recv().await {
         let (note, requested_output_port_name) = package;
         let mut active_notes = active_notes_clone.lock().await;
-        let on_messsage = MidiMessage::new_on_message(note);
-        let off_message = MidiMessage::new_off_message(note);
+        let on_messsage = MidiMessage::new_on_message(note, requested_output_port_name.clone());
+        let off_message = MidiMessage::new_off_message(note, requested_output_port_name.clone());
         (*active_notes).push_back(on_messsage);
-        (*active_notes).push_front(off_message);
+        (*active_notes).push_back(off_message);
       }
     }
   });
@@ -113,9 +107,7 @@ pub fn init(
 
     loop {
       let mut active_notes = active_notes_clone.lock().await;
-      // let iter = active_notes.iter();
 
-      // active_notes.
       for i in 1..=active_notes.len() {
         let index = i.saturating_sub(1);
         let m = active_notes.get(index);
@@ -241,6 +233,7 @@ pub async fn sendmidi(
   offset: u64,
   cc: (bool, u8, u8),
   outputport: String,
+
   midichan: u8,
   state: tauri::State<'_, AsyncInputTransmit>
 ) -> Result<(), String> {
@@ -255,5 +248,5 @@ pub async fn sendmidi(
     offset,
   };
 
-  async_proc_input_tx.send((note, outputport)).await.map_err(|e| e.to_string())
+  async_proc_input_tx.send((note, outputport.clone())).await.map_err(|e| e.to_string())
 }

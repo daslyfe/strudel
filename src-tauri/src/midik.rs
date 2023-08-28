@@ -1,5 +1,7 @@
+use std::collections::HashMap;
 use std::collections::VecDeque;
 use std::sync::Arc;
+use std::vec;
 
 use midir::{ MidiOutputConnection, MidiOutput };
 
@@ -81,54 +83,103 @@ pub fn init(
   async_output_transmitter: mpsc::Sender<(MidiNote, String)>
 ) {
   tauri::async_runtime::spawn(async move { async_process_model(async_input_receiver, async_output_transmitter).await });
-  let active_notes: Arc<Mutex<VecDeque<MidiMessage>>> = Arc::new(Mutex::new(VecDeque::new()));
+  let message_queue: Arc<Mutex<VecDeque<MidiMessage>>> = Arc::new(Mutex::new(VecDeque::new()));
 
-  let active_notes_clone = Arc::clone(&active_notes);
+  let message_queue_clone = Arc::clone(&message_queue);
   tauri::async_runtime::spawn(async move {
     loop {
       if let Some(package) = async_output_receiver.recv().await {
         let (note, requested_output_port_name) = package;
-        let mut active_notes = active_notes_clone.lock().await;
+        let mut message_queue = message_queue_clone.lock().await;
         let on_messsage = MidiMessage::new_on_message(note, requested_output_port_name.clone());
         let off_message = MidiMessage::new_off_message(note, requested_output_port_name.clone());
-        (*active_notes).push_back(on_messsage);
-        (*active_notes).push_back(off_message);
+        (*message_queue).push_back(on_messsage);
+        (*message_queue).push_back(off_message);
       }
     }
   });
 
-  let active_notes_clone = Arc::clone(&active_notes);
+  let message_queue_clone = Arc::clone(&message_queue);
   tauri::async_runtime::spawn(async move {
     //let midi_out = Arc::new(std::sync::Mutex::new(MidiOutput::new("strudel").unwrap()));
-    let midiout = MidiOutput::new("test").unwrap();
-    let ports = midiout.ports();
-    let out_port = ports.get(2).unwrap();
-    let mut out_con = midiout.connect(out_port, "test").unwrap();
+    let midiout = MidiOutput::new("strudel").unwrap();
+    let out_ports = midiout.ports();
+
+    let mut output_connections = HashMap::new();
+    let mut port_names = Vec::new();
+    if out_ports.len() == 0 {
+      println!(" No MIDI devices found. Connect a device or enable IAC Driver.");
+      return;
+    }
+    println!("Found {} midi devices!", out_ports.len());
+    // out_ports.iter().for_each(|port| {
+    //   let port_name = midiout.port_name(port).unwrap();
+    //   println!("{}", port_name);
+    //   let midiout = MidiOutput::new("strudel").unwrap();
+    //   let out_con = midiout.connect(port, &port_name).unwrap();
+    //   output_connections.insert(port_name, out_con);
+    // });
+
+    let mut cons: Vec<MidiOutputConnection> = Vec::new();
+
+    for i in 0..=out_ports.len().saturating_sub(1) {
+      let midiout = MidiOutput::new("strudel").unwrap();
+      let ports = midiout.ports();
+      let port = ports.get(i).unwrap();
+      let port_name = midiout.port_name(port).unwrap();
+      let out_con = midiout.connect(port, &port_name).unwrap();
+      port_names.insert(i, port_name.clone());
+      output_connections.insert(port_name, out_con);
+      // cons.insert(i, out_con);
+    }
+
+    // for i in 1
+
+    let out_port = out_ports.get(2).unwrap();
+
+    let mut out_con = midiout.connect(out_port, "strudel").unwrap();
 
     loop {
-      let mut active_notes = active_notes_clone.lock().await;
+      let mut message_queue = message_queue_clone.lock().await;
 
-      for i in 1..=active_notes.len() {
-        let index = i.saturating_sub(1);
-        let m = active_notes.get(index);
+      for i in 0..=message_queue.len().saturating_sub(1) {
+        let m = message_queue.get(i);
         if m.is_some() {
           let message = m.unwrap();
           if message.instant.elapsed().as_millis() >= message.offset.into() {
+            // let mut out_con = cons.get_mut(2).unwrap();
+            println!("{}", message.requested_out_port_name);
+            let mut out_con = output_connections.get_mut(&message.requested_out_port_name);
+
+            if out_con.is_none() {
+              let key = port_names.iter().find(|port_name| {
+                return port_name.contains(&message.requested_out_port_name);
+              });
+              if key.is_some() {
+                out_con = output_connections.get_mut(key.unwrap());
+              }
+            }
+
+            if out_con.is_none() {
+              println!("failed to find midi device: {}", message.requested_out_port_name);
+              return;
+            }
+
             println!("{}", message.instant.elapsed().as_millis());
-            if let Err(err) = out_con.send(&[message.message, message.note_number, message.velocity]) {
+            if let Err(err) = (&mut out_con.unwrap()).send(&[message.message, message.note_number, message.velocity]) {
               println!("Midi message send error: {}", err);
             }
-            active_notes.remove(index);
+            message_queue.remove(i);
           }
         }
       }
-      // while let Some(message) = active_notes.front() {
+      // while let Some(message) = message_queue.front() {
       //   if message.instant.elapsed().as_millis() >= message.offset.into() {
       //     println!("{}", message.note_number);
       //     if let Err(err) = out_con.send(&[message.message, message.note_number, message.velocity]) {
       //       println!("Midi message send error: {}", err);
       //     }
-      //     active_notes.pop_front();
+      //     message_queue.pop_front();
       //   } else {
       //     break;
       //   }
@@ -142,7 +193,7 @@ pub fn init(
       //     println!("Midi message send error: {}", err);
       //   }
 
-      //   // active_notes.pop_front();
+      //   // message_queue.pop_front();
       // }
     }
 
@@ -233,7 +284,6 @@ pub async fn sendmidi(
   offset: u64,
   cc: (bool, u8, u8),
   outputport: String,
-
   midichan: u8,
   state: tauri::State<'_, AsyncInputTransmit>
 ) -> Result<(), String> {

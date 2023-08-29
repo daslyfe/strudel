@@ -9,16 +9,6 @@ use tokio::time::Instant;
 pub const NOTE_ON_MESSAGE: u8 = 0x90;
 pub const NOTE_OFF_MESSAGE: u8 = 0x80;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct MidiNote {
-  pub channel: u8,
-  pub note_number: u8,
-  pub velocity: u8,
-  pub duration: u64,
-  pub cc: (bool, u8, u8),
-  pub offset: u64,
-}
-
 pub struct MidiMessage {
   pub message: u8,
   pub note_number: u8,
@@ -29,40 +19,14 @@ pub struct MidiMessage {
   pub requested_out_port_name: String,
 }
 
-impl MidiMessage {
-  pub fn new_on_message(note: MidiNote, requested_out_port_name: String) -> Self {
-    return Self {
-      message: NOTE_ON_MESSAGE + note.channel,
-      note_number: note.note_number,
-      cc: note.cc,
-      instant: Instant::now(),
-      velocity: note.velocity,
-      offset: note.offset,
-      requested_out_port_name,
-    };
-  }
-
-  pub fn new_off_message(note: MidiNote, requested_out_port_name: String) -> Self {
-    return Self {
-      message: NOTE_OFF_MESSAGE + note.channel,
-      note_number: note.note_number,
-      cc: note.cc,
-      instant: Instant::now(),
-      velocity: note.velocity,
-      offset: note.duration + note.offset,
-      requested_out_port_name,
-    };
-  }
-}
-
 pub struct AsyncInputTransmit {
-  pub inner: Mutex<mpsc::Sender<(MidiNote, String)>>,
+  pub inner: Mutex<mpsc::Sender<Vec<MidiMessage>>>,
 }
 
 pub fn init(
-  async_input_receiver: mpsc::Receiver<(MidiNote, String)>,
-  mut async_output_receiver: mpsc::Receiver<(MidiNote, String)>,
-  async_output_transmitter: mpsc::Sender<(MidiNote, String)>
+  async_input_receiver: mpsc::Receiver<Vec<MidiMessage>>,
+  mut async_output_receiver: mpsc::Receiver<Vec<MidiMessage>>,
+  async_output_transmitter: mpsc::Sender<Vec<MidiMessage>>
 ) {
   tauri::async_runtime::spawn(async move { async_process_model(async_input_receiver, async_output_transmitter).await });
   let message_queue: Arc<Mutex<VecDeque<MidiMessage>>> = Arc::new(Mutex::new(VecDeque::new()));
@@ -74,12 +38,11 @@ pub fn init(
   tauri::async_runtime::spawn(async move {
     loop {
       if let Some(package) = async_output_receiver.recv().await {
-        let (note, requested_output_port_name) = package;
+        let messages = package;
         let mut message_queue = message_queue_clone.lock().await;
-        let on_messsage = MidiMessage::new_on_message(note, requested_output_port_name.clone());
-        let off_message = MidiMessage::new_off_message(note, requested_output_port_name.clone());
-        (*message_queue).push_back(on_messsage);
-        (*message_queue).push_back(off_message);
+        for message in messages {
+          (*message_queue).push_back(message);
+        }
       }
     }
   });
@@ -129,7 +92,6 @@ pub fn init(
         if message.instant.elapsed().as_millis() < message.offset.into() {
           continue;
         }
-
         let mut out_con = output_connections.get_mut(&message.requested_out_port_name);
 
         // WebMidi supports getting a connection by part of its name
@@ -147,6 +109,7 @@ pub fn init(
           println!("failed to find midi device: {}", message.requested_out_port_name);
           return;
         }
+        println!("note:{}, message:{}, velocity: {} ", message.note_number, message.message, message.velocity);
 
         if let Err(err) = (&mut out_con.unwrap()).send(&[message.message, message.note_number, message.velocity]) {
           println!("Midi message send error: {}", err);
@@ -159,8 +122,8 @@ pub fn init(
 }
 
 pub async fn async_process_model(
-  mut input_reciever: mpsc::Receiver<(MidiNote, String)>,
-  output_transmitter: mpsc::Sender<(MidiNote, String)>
+  mut input_reciever: mpsc::Receiver<Vec<MidiMessage>>,
+  output_transmitter: mpsc::Sender<Vec<MidiMessage>>
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
   while let Some(input) = input_reciever.recv().await {
     let output = input;
@@ -183,14 +146,25 @@ pub async fn sendmidi(
 ) -> Result<(), String> {
   let async_proc_input_tx = state.inner.lock().await;
 
-  let note = MidiNote {
-    channel: midichan.saturating_sub(1),
+  let on_messsage = MidiMessage {
+    message: NOTE_ON_MESSAGE + midichan.saturating_sub(1),
     note_number: notenumber,
-    velocity,
-    duration,
     cc,
+    instant: Instant::now(),
+    velocity,
     offset,
+    requested_out_port_name: outputport.clone(),
   };
 
-  async_proc_input_tx.send((note, outputport)).await.map_err(|e| e.to_string())
+  let off_message = MidiMessage {
+    message: NOTE_OFF_MESSAGE + midichan.saturating_sub(1),
+    note_number: notenumber,
+    cc,
+    instant: Instant::now(),
+    velocity,
+    offset: duration + offset,
+    requested_out_port_name: outputport,
+  };
+
+  async_proc_input_tx.send(vec![on_messsage, off_message]).await.map_err(|e| e.to_string())
 }

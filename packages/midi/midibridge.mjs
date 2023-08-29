@@ -10,18 +10,19 @@ export function playNote(hap, offset, output) {
   const duration = Math.floor(hap.duration.valueOf() * 1000 - 10);
   const roundedOffset = Math.round(offset);
   const midichan = (hap.value.midichan ?? 1) - 1;
+  const requestedport = output ?? 'IAC';
   const messagesfromjs = [];
   if (note != null) {
     const midiNumber = typeof note === 'number' ? note : noteToMidi(note);
 
     messagesfromjs.push({
-      requestedport: output,
+      requestedport,
       message: [ON_MESSAGE + midichan, midiNumber, velocity],
       offset: roundedOffset,
     });
 
     messagesfromjs.push({
-      requestedport: output,
+      requestedport,
       message: [OFF_MESSAGE + midichan, midiNumber, velocity],
       offset: roundedOffset + duration,
     });
@@ -36,13 +37,13 @@ export function playNote(hap, offset, output) {
     }
     const scaled = Math.round(ccv * 127);
     messagesfromjs.push({
-      requestedport: output,
+      requestedport,
       message: [ON_MESSAGE + midichan, ccn, scaled],
       offset: roundedOffset,
     });
 
     messagesfromjs.push({
-      requestedport: output,
+      requestedport,
       message: [OFF_MESSAGE + midichan, ccn, scaled],
       offset: roundedOffset + duration,
     });

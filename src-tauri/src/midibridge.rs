@@ -35,7 +35,6 @@ pub fn init(
         let mut message_queue = message_queue_clone.lock().await;
         let messages = package;
         for message in messages {
-          println!("{}", message.offset);
           (*message_queue).push(message);
         }
       }
@@ -65,6 +64,7 @@ pub fn init(
       let ports = midiout.ports();
       let port = ports.get(i).unwrap();
       let port_name = midiout.port_name(port).unwrap();
+      println!("{}", port_name);
       let out_con = midiout.connect(port, &port_name).unwrap();
       port_names.insert(i, port_name.clone());
       output_connections.insert(port_name, out_con);
@@ -99,14 +99,15 @@ pub fn init(
           }
         }
 
-        if out_con.is_none() {
+        if out_con.is_some() {
+          // process the message
+          if let Err(err) = (&mut out_con.unwrap()).send(&message.message) {
+            println!("Midi message send error: {}", err);
+          }
+        } else {
           println!("failed to find midi device: {}", message.requestedport);
-          return;
         }
 
-        if let Err(err) = (&mut out_con.unwrap()).send(&message.message) {
-          println!("Midi message send error: {}", err);
-        }
         // the message has been processed, so remove it from the queue
         message_queue.remove(i);
       }

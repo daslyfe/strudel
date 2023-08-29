@@ -4,18 +4,13 @@ use midir::MidiOutput;
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
 use tokio::time::Instant;
-
-pub const NOTE_ON_MESSAGE: u8 = 0x90;
-pub const NOTE_OFF_MESSAGE: u8 = 0x80;
+use serde::Deserialize;
 
 pub struct MidiMessage {
-  pub message: u8,
-  pub note_number: u8,
-  pub cc: (bool, u8, u8),
+  pub message: Vec<u8>,
   pub instant: Instant,
-  pub velocity: u8,
   pub offset: u64,
-  pub requested_out_port_name: String,
+  pub requestedport: String,
 }
 
 pub struct AsyncInputTransmit {
@@ -40,6 +35,7 @@ pub fn init(
         let mut message_queue = message_queue_clone.lock().await;
         let messages = package;
         for message in messages {
+          println!("{}", message.offset);
           (*message_queue).push(message);
         }
       }
@@ -70,7 +66,6 @@ pub fn init(
       let port = ports.get(i).unwrap();
       let port_name = midiout.port_name(port).unwrap();
       let out_con = midiout.connect(port, &port_name).unwrap();
-      println!("{}", port_name);
       port_names.insert(i, port_name.clone());
       output_connections.insert(port_name, out_con);
     }
@@ -91,13 +86,13 @@ pub fn init(
         if message.instant.elapsed().as_millis() < message.offset.into() {
           continue;
         }
-        let mut out_con = output_connections.get_mut(&message.requested_out_port_name);
+        let mut out_con = output_connections.get_mut(&message.requestedport);
 
         // WebMidi supports getting a connection by part of its name
         // ex: 'bus 1' instead of 'IAC Driver bus 1' so let's emulate that behavior
         if out_con.is_none() {
           let key = port_names.iter().find(|port_name| {
-            return port_name.contains(&message.requested_out_port_name);
+            return port_name.contains(&message.requestedport);
           });
           if key.is_some() {
             out_con = output_connections.get_mut(key.unwrap());
@@ -105,11 +100,11 @@ pub fn init(
         }
 
         if out_con.is_none() {
-          println!("failed to find midi device: {}", message.requested_out_port_name);
+          println!("failed to find midi device: {}", message.requestedport);
           return;
         }
 
-        if let Err(err) = (&mut out_con.unwrap()).send(&[message.message, message.note_number, message.velocity]) {
+        if let Err(err) = (&mut out_con.unwrap()).send(&message.message) {
           println!("Midi message send error: {}", err);
         }
         // the message has been processed, so remove it from the queue
@@ -129,40 +124,30 @@ pub async fn async_process_model(
   }
   Ok(())
 }
-
+#[derive(Deserialize)]
+pub struct MessageFromJS {
+  message: Vec<u8>,
+  offset: u64,
+  requestedport: String,
+}
 // Called from JS
 #[tauri::command]
 pub async fn sendmidi(
-  notenumber: u8,
-  velocity: u8,
-  duration: u64,
-  offset: u64,
-  cc: (bool, u8, u8),
-  outputport: String,
-  midichan: u8,
+  messagesfromjs: Vec<MessageFromJS>,
   state: tauri::State<'_, AsyncInputTransmit>
 ) -> Result<(), String> {
   let async_proc_input_tx = state.inner.lock().await;
+  let mut messages_to_process: Vec<MidiMessage> = Vec::new();
 
-  let on_messsage = MidiMessage {
-    message: NOTE_ON_MESSAGE + midichan.saturating_sub(1),
-    note_number: notenumber,
-    cc,
-    instant: Instant::now(),
-    velocity,
-    offset,
-    requested_out_port_name: outputport.clone(),
-  };
+  for m in messagesfromjs {
+    let message_to_process = MidiMessage {
+      instant: Instant::now(),
+      message: m.message,
+      offset: m.offset,
+      requestedport: m.requestedport,
+    };
+    messages_to_process.push(message_to_process);
+  }
 
-  let off_message = MidiMessage {
-    message: NOTE_OFF_MESSAGE + midichan.saturating_sub(1),
-    note_number: notenumber,
-    cc,
-    instant: Instant::now(),
-    velocity,
-    offset: duration + offset,
-    requested_out_port_name: outputport,
-  };
-
-  async_proc_input_tx.send(vec![on_messsage, off_message]).await.map_err(|e| e.to_string())
+  async_proc_input_tx.send(messages_to_process).await.map_err(|e| e.to_string())
 }

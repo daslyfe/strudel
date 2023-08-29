@@ -15,7 +15,6 @@ fn main() {
     })
     .invoke_handler(tauri::generate_handler![midik::sendmidi])
     .setup(|_app| {
-      println!("Setting up Tauri...");
       midik::init(async_input_receiver, async_output_receiver, async_output_transmitter);
       Ok(())
     })

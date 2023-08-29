@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::collections::VecDeque;
 use std::sync::Arc;
 use midir::MidiOutput;
 use tokio::sync::mpsc;
@@ -29,7 +28,7 @@ pub fn init(
   async_output_transmitter: mpsc::Sender<Vec<MidiMessage>>
 ) {
   tauri::async_runtime::spawn(async move { async_process_model(async_input_receiver, async_output_transmitter).await });
-  let message_queue: Arc<Mutex<VecDeque<MidiMessage>>> = Arc::new(Mutex::new(VecDeque::new()));
+  let message_queue: Arc<Mutex<Vec<MidiMessage>>> = Arc::new(Mutex::new(Vec::new()));
 
   /* ...........................................................
          Listen For incoming messages and add to queue
@@ -38,10 +37,10 @@ pub fn init(
   tauri::async_runtime::spawn(async move {
     loop {
       if let Some(package) = async_output_receiver.recv().await {
-        let messages = package;
         let mut message_queue = message_queue_clone.lock().await;
+        let messages = package;
         for message in messages {
-          (*message_queue).push_back(message);
+          (*message_queue).push(message);
         }
       }
     }
@@ -109,7 +108,6 @@ pub fn init(
           println!("failed to find midi device: {}", message.requested_out_port_name);
           return;
         }
-        println!("note:{}, message:{}, velocity: {} ", message.note_number, message.message, message.velocity);
 
         if let Err(err) = (&mut out_con.unwrap()).send(&[message.message, message.note_number, message.velocity]) {
           println!("Midi message send error: {}", err);

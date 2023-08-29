@@ -8,7 +8,7 @@ import * as _WebMidi from 'webmidi';
 import { Pattern, isPattern, logger } from '@strudel.cycles/core';
 import { noteToMidi } from '@strudel.cycles/core';
 import { Note } from 'webmidi';
-import { playNote } from './tauriMidi.mjs';
+import { playNote } from './midibridge.mjs';
 
 // if you use WebMidi from outside of this package, make sure to import that instance:
 export const { WebMidi } = _WebMidi;

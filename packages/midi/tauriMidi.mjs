@@ -32,8 +32,10 @@ export function playNote(hap, offset, output) {
       outputport: output ?? 'IAC',
       midichan,
     };
-
-    invoke('sendmidi', noteData);
+    // invoke is blocking, run in an async process
+    setTimeout(() => {
+      invoke('sendmidi', noteData);
+    });
 
     // setTimeout(() => {
     //   invoke('sendmidi', noteData);

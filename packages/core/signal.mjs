@@ -179,6 +179,24 @@ export const chooseWith = (pat, xs) => {
   return __chooseWith(pat, xs).outerJoin();
 };
 
+// export const chooseI = (pat, xs) => {
+//   xs = xs.map(reify);
+//   if (xs.length == 0) {
+//     return silence;
+//   }
+
+//   return pat
+//     .fmap((i) => {
+//       const key = Math.min(Math.max(Math.floor(i), 0), xs.length - 1);
+//       return xs[key];
+//     })
+//     .innerJoin();
+//   // return pat.fmap((i) => {
+//   //   const key = Math.min(Math.max(Math.floor(i), 0), xs.length - 1);
+//   //   return xs[key];
+//   // });
+// };
+
 /**
  * As with {chooseWith}, but the structure comes from the chosen values, rather
  * than the pattern you're using to choose with.

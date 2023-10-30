@@ -1244,6 +1244,52 @@ export function cat(...pats) {
   return slowcat(...pats);
 }
 
+/**
+ * Choose from the list of values (or patterns of values) via the index using the given
+ * pattern of numbers
+ * @param {Pattern} pat
+ * @param {*} xs
+ * @returns {Pattern}
+ * @example
+ * note(chooseI(["g a", "e f", "f g f g" , "g a c d"], "<0 1 [2!2] 3>")).sound("piano1")
+ */
+
+export const chooseI = register('chooseI', (xs, pat) => {
+  xs = xs.map(reify);
+  if (xs.length == 0) {
+    return silence;
+  }
+  return pat
+    .fmap((i) => {
+      const key = Math.min(Math.max(Math.floor(i), 0), xs.length - 1);
+      return xs[key];
+    })
+    .innerJoin();
+});
+
+/**
+ * choose from the list of values (or patterns of values) via the index using the given
+ * pattern of numbers. The selected pattern will be compressed to fit the duration of the selecting index
+ * @param {Pattern} pat
+ * @param {*} xs
+ * @returns {Pattern}
+ * @example
+ * note(squeeze(["g a", "f g f g" , "g a c d"], "<0@2 [1!2] 2>")).sound("piano1")
+ */
+
+export const squeeze = register('squeeze', (xs, pat) => {
+  xs = xs.map(reify);
+  if (xs.length == 0) {
+    return silence;
+  }
+  return pat
+    .fmap((i) => {
+      const key = i % xs.length;
+      return xs[key];
+    })
+    .squeezeJoin();
+});
+
 /** Like {@link Pattern.seq}, but each step has a length, relative to the whole.
  * @return {Pattern}
  * @example

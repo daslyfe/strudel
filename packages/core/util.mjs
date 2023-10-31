@@ -219,6 +219,9 @@ export const zipWith = (f, xs, ys) => xs.map((n, i) => f(n, ys[i]));
 
 export const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
 
+// will always return a positive number
+export const remainder = (num, mod) => ((num % mod) + mod) % mod;
+
 /* solmization, not used yet */
 const solfeggio = ['Do', 'Reb', 'Re', 'Mib', 'Mi', 'Fa', 'Solb', 'Sol', 'Lab', 'La', 'Sib', 'Si']; /*solffegio notes*/
 const indian = [

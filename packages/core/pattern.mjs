@@ -9,6 +9,7 @@ import Fraction from './fraction.mjs';
 import Hap from './hap.mjs';
 import State from './state.mjs';
 import { unionWithObj } from './value.mjs';
+import { clamp, remainder } from './util.mjs';
 
 import { compose, removeUndefineds, flatten, id, listRange, curry, _mod, numeralArgs, parseNumeral } from './util.mjs';
 import drawLine from './drawLine.mjs';
@@ -1245,23 +1246,23 @@ export function cat(...pats) {
 }
 
 /**
- * Choose from the list of values (or patterns of values) via the index using the given
+ * pick from the list of values (or patterns of values) via the index using the given
  * pattern of numbers
  * @param {Pattern} pat
  * @param {*} xs
  * @returns {Pattern}
  * @example
- * note(chooseI(["g a", "e f", "f g f g" , "g a c d"], "<0 1 [2!2] 3>")).sound("piano1")
+ * note(pick(["g a", "e f", "f g f g" , "g a c d"], "<0 1 [2!2] 3>"))
  */
 
-export const chooseI = register('chooseI', (xs, pat) => {
+export const pick = register('pick', (xs, pat) => {
   xs = xs.map(reify);
   if (xs.length == 0) {
     return silence;
   }
   return pat
     .fmap((i) => {
-      const key = Math.min(Math.max(Math.floor(i), 0), xs.length - 1);
+      const key = clamp(i, 0, xs.length - 1);
       return xs[key];
     })
     .innerJoin();
@@ -1274,7 +1275,7 @@ export const chooseI = register('chooseI', (xs, pat) => {
  * @param {*} xs
  * @returns {Pattern}
  * @example
- * note(squeeze(["g a", "f g f g" , "g a c d"], "<0@2 [1!2] 2>")).sound("piano1")
+ * note(squeeze(["g a", "f g f g" , "g a c d"], "<0@2 [1!2] 2>"))
  */
 
 export const squeeze = register('squeeze', (xs, pat) => {
@@ -1284,7 +1285,7 @@ export const squeeze = register('squeeze', (xs, pat) => {
   }
   return pat
     .fmap((i) => {
-      const key = i % xs.length;
+      const key = remainder(i, xs.length);
       return xs[key];
     })
     .squeezeJoin();

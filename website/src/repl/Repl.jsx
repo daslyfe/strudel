@@ -41,7 +41,7 @@ let modules = [
   import('@strudel.cycles/xen'),
   import('@strudel.cycles/webaudio'),
   import('@strudel/codemirror'),
-
+  import('@strudel/hydra'),
   import('@strudel.cycles/serial'),
   import('@strudel.cycles/soundfonts'),
   import('@strudel.cycles/csound'),
@@ -78,9 +78,9 @@ async function initCode() {
     const initialUrl = window.location.href;
     const hash = initialUrl.split('?')[1]?.split('#')?.[0];
     const codeParam = window.location.href.split('#')[1] || '';
-    // looking like https://strudel.tidalcycles.org/?J01s5i1J0200 (fixed hash length)
+    // looking like https://strudel.cc/?J01s5i1J0200 (fixed hash length)
     if (codeParam) {
-      // looking like https://strudel.tidalcycles.org/#ImMzIGUzIg%3D%3D (hash length depends on code length)
+      // looking like https://strudel.cc/#ImMzIGUzIg%3D%3D (hash length depends on code length)
       return hash2code(codeParam);
     } else if (hash) {
       return supabase
@@ -127,6 +127,7 @@ export function Repl({ embedded = false }) {
     isAutoCompletionEnabled,
     isLineWrappingEnabled,
     panelPosition,
+    isZen,
   } = useSettings();
 
   const paintOptions = useMemo(() => ({ fontFamily }), [fontFamily]);
@@ -322,7 +323,7 @@ export function Repl({ embedded = false }) {
           </button>
         )}
         <div className="grow flex relative overflow-hidden">
-          <section className="text-gray-100 cursor-text pb-0 overflow-auto grow" id="code">
+          <section className={'text-gray-100 cursor-text pb-0 overflow-auto grow' + (isZen ? ' px-10' : '')} id="code">
             <CodeMirror
               theme={currentTheme}
               value={code}

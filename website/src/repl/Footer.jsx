@@ -3,7 +3,7 @@ import { logger } from '@strudel.cycles/core';
 import { useEvent, cx } from '@strudel.cycles/react';
 // import { cx } from '@strudel.cycles/react';
 import { nanoid } from 'nanoid';
-import React, { useMemo, useCallback, useLayoutEffect, useRef, useState } from 'react';
+import React, { useMemo, useCallback, useLayoutEffect, useRef, useState, useEffect } from 'react';
 import { Reference } from './Reference';
 import { themes } from './themes.mjs';
 import { useSettings, settingsMap, setActiveFooter, defaultSettings } from '../settings.mjs';
@@ -318,9 +318,10 @@ function ButtonGroup({ value, onChange, items }) {
   );
 }
 
-function SelectInput({ value, options, onChange }) {
+function SelectInput({ value, options, onChange, onClick }) {
   return (
     <select
+      onClick={onClick}
       className="p-2 bg-background rounded-md text-foreground"
       value={value}
       onChange={(e) => onChange(e.target.value)}
@@ -365,6 +366,72 @@ function FormItem({ label, children }) {
   );
 }
 
+async function setAudioDevice(id) {
+  const audioCtx = getAudioContext();
+  await audioCtx.setSinkId(id);
+}
+
+export function AudioDeviceSelector({ audioDeviceName, onChange }) {
+  const [options, setOptions] = useState({});
+  const [optionsInitialized, setOptionsInitialized] = useState(false);
+
+  async function initializeOptions() {
+    await navigator.mediaDevices.getUserMedia({ audio: true });
+    let devices = await navigator.mediaDevices.enumerateDevices();
+    devices = devices.filter((device) => device.kind === 'audiooutput' && device.deviceId !== 'default');
+    const optionsArray = [];
+    devices.forEach((device) => {
+      optionsArray.push([device.deviceId, device.label]);
+    });
+    const options = Object.fromEntries(optionsArray);
+    setOptions(options);
+    setOptionsInitialized(true);
+    return options;
+  }
+
+  useEffect(() => {
+    if (!audioDeviceName.length || optionsInitialized) {
+      return;
+    }
+
+    (async () => {
+      const options = await initializeOptions();
+
+      const deviceID = Object.keys(options).find((id) => options[id] === audioDeviceName);
+
+      if (deviceID == null) {
+        onChange('');
+        return;
+      }
+      await setAudioDevice(deviceID);
+    })();
+  }, []);
+
+  const onClick = () => {
+    if (optionsInitialized) {
+      return;
+    }
+    (async () => {
+      await initializeOptions();
+    })();
+  };
+  const onDeviceChange = (deviceID) => {
+    (async () => {
+      const deviceName = options[deviceID];
+      onChange(deviceName);
+      await setAudioDevice(deviceID);
+    })();
+  };
+  return (
+    <SelectInput
+      options={options}
+      onClick={onClick}
+      value={Object.keys(options).find((id) => options[id] === audioDeviceName)}
+      onChange={onDeviceChange}
+    />
+  );
+}
+
 const themeOptions = Object.fromEntries(Object.keys(themes).map((k) => [k, k]));
 const fontFamilyOptions = {
   monospace: 'monospace',
@@ -391,6 +458,7 @@ function SettingsTab({ scheduler }) {
     fontSize,
     fontFamily,
     panelPosition,
+    audioDeviceName,
   } = useSettings();
 
   return (
@@ -413,6 +481,12 @@ function SettingsTab({ scheduler }) {
           </button>
         </div>
       </FormItem> */}
+      <FormItem label="Audio Device">
+        <AudioDeviceSelector
+          audioDeviceName={audioDeviceName}
+          onChange={(audioDeviceName) => settingsMap.setKey('audioDeviceName', audioDeviceName)}
+        />
+      </FormItem>
       <FormItem label="Theme">
         <SelectInput options={themeOptions} value={theme} onChange={(theme) => settingsMap.setKey('theme', theme)} />
       </FormItem>

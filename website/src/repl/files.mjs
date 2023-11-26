@@ -47,6 +47,13 @@ async function writeStrudelJson(subpath) {
       samples[parent.name].push(entry.subpath.slice(1).concat([entry.name]).join('/'));
     }
   });
+  console.log(samples);
+  Object.keys(samples).forEach((parentName) => {
+    samples[parentName] = samples[parentName].sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }),
+    );
+  });
+
   const json = JSON.stringify(samples, null, 2);
   const filepath = subpath + '/strudel.json';
   await writeTextFile(filepath, json, { dir });

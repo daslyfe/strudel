@@ -57,6 +57,19 @@ function getWorklet(ac, processor, params) {
 
 // this function should be called on first user interaction (to avoid console warning)
 export async function initAudio(options = {}) {
+  (async () => {
+    await navigator.mediaDevices.getUserMedia({ audio: true });
+    let devices = await navigator.mediaDevices.enumerateDevices();
+    devices = devices.filter((device) => device.kind === 'audiooutput');
+    logger(`Found ${devices.length} audio devices:`);
+    devices.forEach((device) => logger(device.label));
+
+    console.log(devices.filter((device) => device.kind === 'audiooutput'));
+    const id = devices.find((device) => device.label === 'BlackHole 16ch (Virtual)').deviceId;
+    const audioCtx = getAudioContext();
+    await audioCtx.setSinkId(id);
+  })();
+
   const { disableWorklets = false } = options;
   if (typeof window !== 'undefined') {
     await getAudioContext().resume();
@@ -114,6 +127,7 @@ export const panic = () => {
   }
   destinationGain.gain.linearRampToValueAtTime(0, getAudioContext().currentTime + 0.01);
   destinationGain = null;
+  channelMerger == null;
 };
 
 function getDelay(orbit, delaytime, delayfeedback, t) {

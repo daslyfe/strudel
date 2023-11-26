@@ -7,7 +7,7 @@ import React, { useMemo, useCallback, useLayoutEffect, useRef, useState, useEffe
 import { Reference } from './Reference';
 import { themes } from './themes.mjs';
 import { useSettings, settingsMap, setActiveFooter, defaultSettings } from '../settings.mjs';
-import { getAudioContext, soundMap, connectToDestination } from '@strudel.cycles/webaudio';
+import { getAudioContext, soundMap, connectToDestination, initializeAudioOutput } from '@strudel.cycles/webaudio';
 import { useStore } from '@nanostores/react';
 import { FilesTab } from './FilesTab';
 
@@ -369,6 +369,7 @@ function FormItem({ label, children }) {
 async function setAudioDevice(id) {
   const audioCtx = getAudioContext();
   await audioCtx.setSinkId(id);
+  await initializeAudioOutput();
 }
 
 export function AudioDeviceSelector({ audioDeviceName, onChange }) {
@@ -403,6 +404,7 @@ export function AudioDeviceSelector({ audioDeviceName, onChange }) {
         onChange('');
         return;
       }
+
       await setAudioDevice(deviceID);
     })();
   }, []);

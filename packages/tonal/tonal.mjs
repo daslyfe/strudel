@@ -173,3 +173,38 @@ export const scale = register('scale', function (scale, pat) {
     return hap.withValue(() => (isObject ? { ...hap.value, note } : note)).setContext({ ...hap.context, scale });
   });
 });
+
+/**
+ * Turns numbers into notes in the scale (zero indexed). Also sets scale for other scale operations, like {@link Pattern#scaleTranspose}.
+ *
+ * A scale consists of a root note (e.g. `c4`, `c`, `f#`, `bb4`) followed by semicolon (':') and then a [scale type](https://github.com/tonaljs/tonal/blob/main/packages/scale-type/data.ts).
+ *
+ * The root note defaults to octave 3, if no octave number is given.
+ *
+ * @name quantize
+ * @param {string} scale Name of scale
+ * @returns Pattern
+ * @example
+ * n("0 2 36 6 4 2".quantize("0:3:7"))
+ */
+
+export const quantize = register('quantize', function (scale, pat) {
+  // Supports ':' list syntax in mininotation
+  if (Array.isArray(scale)) {
+    scale = scale.flat();
+  }
+  return pat.withHap((hap) => {
+    const isObject = typeof hap.value === 'object';
+    let note = isObject ? hap.value.n : hap.value;
+    if (isObject) {
+      delete hap.value.n; // remove n so it won't cause trouble
+    }
+    const octave = (note / 12) >> 0;
+    const transpose = octave * 12;
+
+    const goal = note - transpose;
+    note = scale.reduce((prev, curr) => (Math.abs(curr - goal) < Math.abs(prev - goal) ? curr : prev)) + transpose + 48;
+
+    return hap.withValue(() => (isObject ? { ...hap.value, note } : note));
+  });
+});

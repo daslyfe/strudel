@@ -5,7 +5,7 @@ This program is free software: you can redistribute it and/or modify it under th
 */
 
 import { Note, Interval, Scale } from '@tonaljs/tonal';
-import { register, _mod } from '@strudel.cycles/core';
+import { register, _mod, noteToMidi } from '@strudel.cycles/core';
 
 const octavesInterval = (octaves) => (octaves <= 0 ? -1 : 1) + octaves * 7 + 'P';
 
@@ -196,6 +196,13 @@ export const quantize = register('quantize', function (scale, pat) {
   return pat.withHap((hap) => {
     const isObject = typeof hap.value === 'object';
     let note = isObject ? hap.value.n : hap.value;
+    if (typeof note === 'number') {
+      note = note + 48;
+    }
+    if (typeof note === 'string') {
+      note = noteToMidi(note);
+    }
+
     if (isObject) {
       delete hap.value.n; // remove n so it won't cause trouble
     }
@@ -203,7 +210,7 @@ export const quantize = register('quantize', function (scale, pat) {
     const transpose = octave * 12;
 
     const goal = note - transpose;
-    note = scale.reduce((prev, curr) => (Math.abs(curr - goal) < Math.abs(prev - goal) ? curr : prev)) + transpose + 48;
+    note = scale.reduce((prev, curr) => (Math.abs(curr - goal) < Math.abs(prev - goal) ? curr : prev)) + transpose;
 
     return hap.withValue(() => (isObject ? { ...hap.value, note } : note));
   });

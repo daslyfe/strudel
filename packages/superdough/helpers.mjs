@@ -1,6 +1,30 @@
 import { getAudioContext } from './superdough.mjs';
 import { clamp } from './util.mjs';
 
+const setRelease = (param, phase, sustain, startTime, endTime, endValue, curve = 'linear') => {
+  const ctx = getAudioContext();
+  const ramp = curve === 'exponential' ? 'exponentialRampToValueAtTime' : 'linearRampToValueAtTime';
+  // if the decay stage is complete before the note event is done, we don't need to do anything special
+  if (phase < startTime) {
+    param.setValueAtTime(sustain, startTime);
+    param[ramp](endValue, endTime);
+  } else if (param.cancelAndHoldAtTime == null) {
+    //this replicates cancelAndHoldAtTime behavior for Firefox
+    setTimeout(() => {
+      //sustain at current value
+      const currValue = param.value;
+      param.cancelScheduledValues(0);
+      param.setValueAtTime(currValue, 0);
+      //release
+      param[ramp](endValue, endTime);
+    }, (startTime - ctx.currentTime) * 1000);
+  } else {
+    //stop the envelope, hold the value, and then set the release stage
+    param.cancelAndHoldAtTime(startTime);
+    param[ramp](endValue, endTime);
+  }
+};
+
 export function gainNode(value) {
   const node = getAudioContext().createGain();
   node.gain.value = value;
@@ -21,13 +45,10 @@ export const getEnvelope = (attack, decay, sustain, release, velocity, begin) =>
   return {
     node: gainNode,
     stop: (t) => {
-      // to make sure the release won't begin before sustain is reached
-      phase = Math.max(t, phase);
-      // see https://github.com/tidalcycles/strudel/issues/522
-      gainNode.gain.setValueAtTime(sustainLevel, phase);
-      phase += release;
-      gainNode.gain.linearRampToValueAtTime(0, phase); // release
-      return phase;
+      const endTime = t + release;
+      setRelease(gainNode.gain, phase, sustain, t, endTime, 0);
+      // helps prevent pops from overlapping sounds
+      return endTime;
     },
   };
 };
@@ -48,30 +69,7 @@ export const getExpEnvelope = (attack, decay, sustain, release, velocity, begin)
   };
 };
 
-export const getADSR = (attack, decay, sustain, release, velocity, begin, end) => {
-  const gainNode = getAudioContext().createGain();
-  gainNode.gain.setValueAtTime(0, begin);
-  gainNode.gain.linearRampToValueAtTime(velocity, begin + attack); // attack
-  gainNode.gain.linearRampToValueAtTime(sustain * velocity, begin + attack + decay); // sustain start
-  gainNode.gain.setValueAtTime(sustain * velocity, end); // sustain end
-  gainNode.gain.linearRampToValueAtTime(0, end + release); // release
-  // for some reason, using exponential ramping creates little cracklings
-  /* let t = begin;
-  gainNode.gain.setValueAtTime(0, t);
-  gainNode.gain.exponentialRampToValueAtTime(velocity, (t += attack));
-  const sustainGain = Math.max(sustain * velocity, 0.001);
-  gainNode.gain.exponentialRampToValueAtTime(sustainGain, (t += decay));
-  if (end - begin < attack + decay) {
-    gainNode.gain.cancelAndHoldAtTime(end);
-  } else {
-    gainNode.gain.setValueAtTime(sustainGain, end);
-  }
-  gainNode.gain.exponentialRampToValueAtTime(0.001, end + release); // release */
-  return gainNode;
-};
-
 export const getParamADSR = (
-  context,
   param,
   attack,
   decay,
@@ -95,16 +93,11 @@ export const getParamADSR = (
   param[ramp](peak, phase);
   phase += decay;
   const sustainLevel = min + sustain * range;
+
   //decay
   param[ramp](sustainLevel, phase);
-  //this timeout can be replaced with cancelAndHoldAtTime once it is implemented in Firefox
-  setTimeout(() => {
-    //sustain at current value
-    param.cancelScheduledValues(0);
-    phase += Math.max(release, 0.1);
-    //release
-    param[ramp](min, phase);
-  }, (end - context.currentTime) * 1000);
+
+  setRelease(param, phase, sustainLevel, end, end + release, min, curve);
 };
 
 export function getCompressor(ac, threshold, ratio, knee, attack, release) {
@@ -121,20 +114,24 @@ export function getCompressor(ac, threshold, ratio, knee, attack, release) {
 // changes the default values of the envelope based on what parameters the user has defined
 // so it behaves more like you would expect/familiar as other synthesis tools
 // ex: sound(val).decay(val) will behave as a decay only envelope. sound(val).attack(val).decay(val) will behave like an "ad" env, etc.
-const envmin = 0.001;
-export const getADSRValues = (params, defaultValues = [envmin, envmin, 1, envmin]) => {
+
+export const getADSRValues = (params, curve = 'linear', defaultValues) => {
+  const envmin = curve === 'exponential' ? 0.001 : 0;
+  const releaseMin = 0.01;
+  const envmax = 1;
   const [a, d, s, r] = params;
-  const [defA, defD, defS, defR] = defaultValues;
   if (a == null && d == null && s == null && r == null) {
-    return defaultValues;
+    return defaultValues ?? [envmin, envmin, envmax, releaseMin];
   }
-  const sustain = s != null ? s : (a != null && d == null) || (a == null && d == null) ? defS : envmin;
-  return [a ?? envmin, d ?? envmin, sustain, r ?? envmin];
+  const sustain = s != null ? s : (a != null && d == null) || (a == null && d == null) ? envmax : envmin;
+  return [Math.max(a ?? 0, envmin), Math.max(d ?? 0, envmin), Math.min(sustain, envmax), Math.max(r ?? 0, releaseMin)];
 };
 
 export function createFilter(context, type, frequency, Q, att, dec, sus, rel, fenv, start, end, fanchor = 0.5) {
-  const [attack, decay, sustain, release] = getADSRValues([att, dec, sus, rel], [0.01, 0.01, 1, 0.01]);
+  const curve = 'exponential';
+  const [attack, decay, sustain, release] = getADSRValues([att, dec, sus, rel], curve, [0.005, 0.14, 0, 0.1]);
   const filter = context.createBiquadFilter();
+
   filter.type = type;
   filter.Q.value = Q;
   filter.frequency.value = frequency;
@@ -143,10 +140,9 @@ export function createFilter(context, type, frequency, Q, att, dec, sus, rel, fe
   if (!isNaN(fenv) && fenv !== 0) {
     const offset = fenv * fanchor;
 
-    const min = clamp(2 ** -offset * frequency, 0, 20000);
     const max = clamp(2 ** (fenv - offset) * frequency, 0, 20000);
 
-    getParamADSR(context, filter.frequency, attack, decay, sustain, release, min, max, start, end);
+    getParamADSR(filter.frequency, attack, decay, sustain, release, frequency, max, start, end, curve);
     return filter;
   }
 

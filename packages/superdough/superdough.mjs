@@ -79,7 +79,6 @@ export async function initAudioOnFirstClick(options) {
 }
 
 let delays = {};
-const maxfeedback = 0.98;
 
 let channelMerger, destinationGain;
 //update the output channel configuration to match user's audio device
@@ -123,10 +122,8 @@ export const panic = () => {
 };
 
 function getDelay(orbit, delaytime, delayfeedback, t) {
-  if (delayfeedback > maxfeedback) {
-    //logger(`delayfeedback was clamped to ${maxfeedback} to save your ears`);
-  }
-  delayfeedback = clamp(delayfeedback, 0, 0.98);
+  const maxfeedback = 1;
+  delayfeedback = clamp(delayfeedback, 0, maxfeedback);
   if (!delays[orbit]) {
     const ac = getAudioContext();
     const dly = ac.createFeedbackDelay(1, delaytime, delayfeedback);

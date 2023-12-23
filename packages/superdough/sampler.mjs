@@ -29,11 +29,10 @@ export const getSampleBufferSource = async (s, n, note, speed, freq, bank, resol
   }
   let midi = valueToMidi({ freq, note }, 36);
   transpose = midi - 36; // C3 is middle C
-
   const ac = getAudioContext();
+  n = Math.round(nanFallback(n, 0));
   let sampleUrl;
   if (Array.isArray(bank)) {
-    n = nanFallback(n, 0);
     sampleUrl = bank[n % bank.length];
   } else {
     const midiDiff = (noteA) => noteToMidi(noteA) - midi;

@@ -1706,6 +1706,21 @@ export const { slow, sparsity } = register(['slow', 'sparsity'], function (facto
 });
 
 /**
+ * apply swing to a pattern
+ *
+ * @name swingBy
+ * @memberof Pattern
+ * @param {number | Pattern} amount
+ * @param {number | Pattern} division
+ * @returns Pattern
+ * @example
+ * s("hh!16").swingBy(.2, 16)
+ */
+export const swingBy = register('swingBy', (amount, division, pat) =>
+  pat.when(cat(0, 1).fast(division), (x) => x.late(amount / division)),
+);
+
+/**
  * Carries out an operation 'inside' a cycle.
  * @example
  * "0 1 2 3 4 3 2 1".inside(4, rev).scale('C major').note()

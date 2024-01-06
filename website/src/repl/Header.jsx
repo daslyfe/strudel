@@ -6,7 +6,7 @@ import SparklesIcon from '@heroicons/react/20/solid/SparklesIcon';
 import StopCircleIcon from '@heroicons/react/20/solid/StopCircleIcon';
 import cx from '@src/cx.mjs';
 import { useSettings, setIsZen } from '../settings.mjs';
-// import { ReplContext } from './Repl';
+// import { ReplContext } from './util';
 import './Repl.css';
 const { BASE_URL } = import.meta.env;
 const baseNoTrailing = BASE_URL.endsWith('/') ? BASE_URL.slice(0, -1) : BASE_URL;

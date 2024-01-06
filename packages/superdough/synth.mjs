@@ -186,6 +186,7 @@ export function getOscillator(
   }
 
   let noiseMix;
+
   if (noise) {
     noiseMix = getNoiseMix(o, noise, t);
   }

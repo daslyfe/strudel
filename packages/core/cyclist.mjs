@@ -16,9 +16,11 @@ export class Cyclist {
     this.lastBegin = 0; // query begin of last tick
     this.lastEnd = 0; // query end of last tick
     this.getTime = getTime; // get absolute time
-    this.num_cycles_since_last_cps_change = 0;
+    this.num_cycles_at_cps_change = 0;
     this.onToggle = onToggle;
     this.latency = latency; // fixed trigger time offset
+    this.nextCycleStartTime = 0;
+
     this.clock = createClock(
       getTime,
       // called slightly before each cycle
@@ -27,23 +29,24 @@ export class Cyclist {
           this.origin = phase;
         }
         if (this.num_ticks_since_cps_change === 0) {
-          this.num_cycles_since_last_cps_change = this.lastEnd;
+          this.num_cycles_at_cps_change = this.lastEnd;
         }
         this.num_ticks_since_cps_change++;
         try {
           const time = getTime();
           const begin = this.lastEnd;
           this.lastBegin = begin;
-
           //convert ticks to cycles, so you can query the pattern for events
           const eventLength = duration * this.cps;
-          const end = this.num_cycles_since_last_cps_change + this.num_ticks_since_cps_change * eventLength;
+          const num_cycles_since_cps_change = this.num_ticks_since_cps_change * eventLength;
+          const end = this.num_cycles_at_cps_change + num_cycles_since_cps_change;
           this.lastEnd = end;
 
           // query the pattern for events
           const haps = this.pattern.queryArc(begin, end);
 
           const tickdeadline = phase - time; // time left until the phase is a whole number
+
           this.lastTick = time + tickdeadline;
 
           haps.forEach((hap) => {
@@ -71,7 +74,7 @@ export class Cyclist {
   }
   start() {
     this.num_ticks_since_cps_change = 0;
-    this.num_cycles_since_last_cps_change = 0;
+    this.num_cycles_at_cps_change = 0;
     if (!this.pattern) {
       throw new Error('Scheduler: no pattern set! call .setPattern first.');
     }

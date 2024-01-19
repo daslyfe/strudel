@@ -1,90 +1,149 @@
-import { DocumentDuplicateIcon, PencilSquareIcon, TrashIcon } from '@heroicons/react/20/solid';
-import { useMemo } from 'react';
+import { DocumentDuplicateIcon, TrashIcon } from '@heroicons/react/20/solid';
+import { useSettings } from '../../settings.mjs';
 import {
-  $featuredPatterns,
-  $publicPatterns,
-  clearUserPatterns,
-  deleteActivePattern,
-  duplicateActivePattern,
   exportPatterns,
-  getUserPattern,
   importPatterns,
-  newUserPattern,
-  renameActivePattern,
-  setActivePattern,
   useActivePattern,
-  useSettings,
-} from '../../settings.mjs';
-import * as tunes from '../tunes.mjs';
-import { useStore } from '@nanostores/react';
+  useViewingPatternData,
+  userPattern,
+} from '../../user_pattern_utils.mjs';
+import { useMemo } from 'react';
 import { getMetadata } from '../../metadata_parser';
+import { useExamplePatterns } from '../useExamplePatterns';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ');
 }
 
+function PatternLabel({ pattern } /* : { pattern: Tables<'code'> } */) {
+  const meta = useMemo(() => getMetadata(pattern.code), [pattern]);
+
+  return (
+    <>{`${pattern.id}: ${
+      meta.title ?? pattern.hash ?? new Date(pattern.created_at).toLocaleDateString() ?? 'unnamed'
+    } by ${Array.isArray(meta.by) ? meta.by.join(',') : 'Anonymous'}`}</>
+  );
+}
+
+function PatternButton({ showOutline, onClick, pattern, showHiglight }) {
+  return (
+    <a
+      className={classNames(
+        'mr-4 hover:opacity-50 cursor-pointer block',
+        showOutline && 'outline outline-1',
+        showHiglight && 'bg-selection',
+      )}
+      onClick={onClick}
+    >
+      <PatternLabel pattern={pattern} />
+    </a>
+  );
+}
+
+function PatternButtons({ patterns, activePattern, onClick, started }) {
+  const viewingPatternStore = useViewingPatternData();
+  const viewingPatternData = JSON.parse(viewingPatternStore);
+  const viewingPatternID = viewingPatternData.id;
+  return (
+    <div className="font-mono text-sm">
+      {Object.values(patterns)
+        .reverse()
+        .map((pattern) => {
+          const id = pattern.id;
+          return (
+            <PatternButton
+              pattern={pattern}
+              key={id}
+              showHiglight={id === viewingPatternID}
+              showOutline={id === activePattern && started}
+              onClick={() => onClick(id)}
+            />
+          );
+        })}
+    </div>
+  );
+}
+
+function ActionButton({ children, onClick, label, labelIsHidden }) {
+  return (
+    <button className="hover:opacity-50" onClick={onClick} title={label}>
+      {labelIsHidden !== true && label}
+      {children}
+    </button>
+  );
+}
+
 export function PatternsTab({ context }) {
-  const { userPatterns } = useSettings();
   const activePattern = useActivePattern();
-  const featuredPatterns = useStore($featuredPatterns);
-  const publicPatterns = useStore($publicPatterns);
-  const isExample = useMemo(() => activePattern && !!tunes[activePattern], [activePattern]);
+  const viewingPatternStore = useViewingPatternData();
+  const viewingPatternData = JSON.parse(viewingPatternStore);
+
+  const { userPatterns } = useSettings();
+  const examplePatterns = useExamplePatterns();
+  const collections = examplePatterns.collections;
+
+  const updateCodeWindow = (patternData, reset = false) => {
+    context.handleUpdate(patternData, reset);
+  };
+  const viewingPatternID = viewingPatternData?.id;
+  const viewingIDIsValid = userPattern.isValidID(viewingPatternID);
+  const isUserPattern = userPatterns[viewingPatternID] != null;
+
   return (
     <div className="px-4 w-full dark:text-white text-stone-900 space-y-4 pb-4">
       <section>
-        {activePattern && (
+        {viewingIDIsValid && (
           <div className="flex items-center mb-2 space-x-2 overflow-auto">
-            <h1 className="text-xl">{activePattern}</h1>
+            <h1 className="text-xl">{`${viewingPatternID}`}</h1>
             <div className="space-x-4 flex w-min">
-              {!isExample && (
-                <button className="hover:opacity-50" onClick={() => renameActivePattern()} title="Rename">
-                  <PencilSquareIcon className="w-5 h-5" />
-                  {/* <PencilIcon className="w-5 h-5" /> */}
-                </button>
-              )}
-              <button className="hover:opacity-50" onClick={() => duplicateActivePattern()} title="Duplicate">
+              <ActionButton
+                label="Duplicate"
+                onClick={() => {
+                  const { data } = userPattern.duplicate(viewingPatternData);
+                  updateCodeWindow(data);
+                }}
+                labelIsHidden
+              >
                 <DocumentDuplicateIcon className="w-5 h-5" />
-              </button>
-              {!isExample && (
-                <button className="hover:opacity-50" onClick={() => deleteActivePattern()} title="Delete">
+              </ActionButton>
+              {isUserPattern && (
+                <ActionButton
+                  label="Delete"
+                  onClick={() => {
+                    const { data } = userPattern.delete(viewingPatternID);
+                    updateCodeWindow({ ...data, collection: userPattern.collection });
+                  }}
+                  labelIsHidden
+                >
                   <TrashIcon className="w-5 h-5" />
-                </button>
+                </ActionButton>
               )}
             </div>
           </div>
         )}
-        <div className="font-mono text-sm">
-          {Object.entries(userPatterns).map(([key, up]) => (
-            <a
-              key={key}
-              className={classNames(
-                'mr-4 hover:opacity-50 cursor-pointer inline-block',
-                key === activePattern ? 'outline outline-1' : '',
-              )}
-              onClick={() => {
-                const { code } = up;
-                setActivePattern(key);
-                context.handleUpdate(code, true);
-              }}
-            >
-              {key}
-            </a>
-          ))}
-        </div>
+        <PatternButtons
+          onClick={(id) => updateCodeWindow({ ...userPatterns[id], collection: userPattern.collection }, false)}
+          patterns={userPatterns}
+          started={context.started}
+          activePattern={activePattern}
+          viewingPatternID={viewingPatternID}
+        />
         <div className="pr-4 space-x-4 border-b border-foreground mb-2 h-8 flex overflow-auto max-w-full items-center">
-          <button
-            className="hover:opacity-50"
+          <ActionButton
+            label="new"
             onClick={() => {
-              const name = newUserPattern();
-              const { code } = getUserPattern(name);
-              context.handleUpdate(code, true);
+              const { data } = userPattern.createAndAddToDB();
+              updateCodeWindow(data);
             }}
-          >
-            new
-          </button>
-          <button className="hover:opacity-50" onClick={() => clearUserPatterns()}>
-            clear
-          </button>
+          />
+          <ActionButton
+            label="clear"
+            onClick={() => {
+              const { data } = userPattern.clearAll();
+              updateCodeWindow(data);
+            }}
+          />
+
           <label className="hover:opacity-50 cursor-pointer">
             <input
               style={{ display: 'none' }}
@@ -95,84 +154,25 @@ export function PatternsTab({ context }) {
             />
             import
           </label>
-          <button className="hover:opacity-50" onClick={() => exportPatterns()}>
-            export
-          </button>
+          <ActionButton label="export" onClick={exportPatterns} />
         </div>
       </section>
-      {featuredPatterns && (
-        <section>
-          <h2 className="text-xl mb-2">Featured Patterns</h2>
-          <div className="font-mono text-sm">
-            {featuredPatterns.map((pattern) => (
-              <a
-                key={pattern.id}
-                className={classNames(
-                  'mr-4 hover:opacity-50 cursor-pointer block',
-                  pattern.hash === activePattern ? 'outline outline-1' : '',
-                )}
-                onClick={() => {
-                  setActivePattern(pattern.hash);
-                  context.handleUpdate(pattern.code, true);
-                }}
-              >
-                <PatternLabel pattern={pattern} />
-              </a>
-            ))}
-          </div>
-        </section>
-      )}
-      {publicPatterns && (
-        <section>
-          <h2 className="text-xl mb-2">Last Creations</h2>
-          <div className="font-mono text-sm">
-            {publicPatterns.map((pattern) => (
-              <a
-                key={'public-' + pattern.id}
-                className={classNames(
-                  'mr-4 hover:opacity-50 cursor-pointer block', // inline-block
-                  pattern.hash === activePattern ? 'outline outline-1' : '',
-                )}
-                onClick={() => {
-                  setActivePattern(pattern.hash);
-                  context.handleUpdate(pattern.code, true);
-                }}
-              >
-                <PatternLabel pattern={pattern} />
-              </a>
-            ))}
-          </div>
-        </section>
-      )}
-      <section>
-        <h2 className="text-xl mb-2">Stock Examples</h2>
-        <div className="font-mono text-sm">
-          {Object.entries(tunes).map(([key, tune]) => (
-            <a
-              key={key}
-              className={classNames(
-                'mr-4 hover:opacity-50 cursor-pointer inline-block',
-                key === activePattern ? 'outline outline-1' : '',
-              )}
-              onClick={() => {
-                setActivePattern(key);
-                context.handleUpdate(tune, true);
-              }}
-            >
-              {key}
-            </a>
-          ))}
-        </div>
-      </section>
+      {Array.from(collections.keys()).map((collection) => {
+        const patterns = collections.get(collection);
+        return (
+          <section key={collection}>
+            <h2 className="text-xl mb-2">{collection}</h2>
+            <div className="font-mono text-sm">
+              <PatternButtons
+                onClick={(id) => updateCodeWindow({ ...patterns[id], collection }, true)}
+                started={context.started}
+                patterns={patterns}
+                activePattern={activePattern}
+              />
+            </div>
+          </section>
+        );
+      })}
     </div>
-  );
-}
-
-export function PatternLabel({ pattern } /* : { pattern: Tables<'code'> } */) {
-  const meta = useMemo(() => getMetadata(pattern.code), [pattern]);
-  return (
-    <>
-      {pattern.id}. {meta.title || pattern.hash} by {Array.isArray(meta.by) ? meta.by.join(',') : 'Anonymous'}
-    </>
   );
 }

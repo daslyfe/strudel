@@ -1,40 +1,22 @@
-import { controls, evalScope, hash2code, logger } from '@strudel.cycles/core';
+import { controls, evalScope, hash2code, logger } from '@strudel/core';
 import { settingPatterns, defaultAudioDeviceName } from '../settings.mjs';
-import { getAudioContext, initializeAudioOutput, setDefaultAudioContext } from '@strudel.cycles/webaudio';
+import { getAudioContext, initializeAudioOutput, setDefaultAudioContext } from '@strudel/webaudio';
 
 import { isTauri } from '../tauri.mjs';
 import './Repl.css';
-import * as tunes from './tunes.mjs';
+
 import { createClient } from '@supabase/supabase-js';
 import { nanoid } from 'nanoid';
 import { writeText } from '@tauri-apps/api/clipboard';
 import { createContext } from 'react';
-import { $publicPatterns, $featuredPatterns } from '../settings.mjs';
+import { stockPatterns } from './useExamplePatterns';
+import { loadDBPatterns } from '@src/user_pattern_utils.mjs';
 
 // Create a single supabase client for interacting with your database
 export const supabase = createClient(
   'https://pidxdsxphlhzjnzmifth.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBpZHhkc3hwaGxoempuem1pZnRoIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NTYyMzA1NTYsImV4cCI6MTk3MTgwNjU1Nn0.bqlw7802fsWRnqU5BLYtmXk_k-D1VFmbkHMywWc15NM',
 );
-
-export function loadPublicPatterns() {
-  return supabase.from('code').select().eq('public', true).limit(20).order('id', { ascending: false });
-}
-
-export function loadFeaturedPatterns() {
-  return supabase.from('code').select().eq('featured', true).limit(20).order('id', { ascending: false });
-}
-
-async function loadDBPatterns() {
-  try {
-    const { data: publicPatterns } = await loadPublicPatterns();
-    const { data: featuredPatterns } = await loadFeaturedPatterns();
-    $publicPatterns.set(publicPatterns);
-    $featuredPatterns.set(featuredPatterns);
-  } catch (err) {
-    console.error('error loading patterns');
-  }
-}
 
 if (typeof window !== 'undefined') {
   loadDBPatterns();
@@ -71,24 +53,24 @@ export async function initCode() {
 }
 
 export function getRandomTune() {
-  const allTunes = Object.entries(tunes);
+  const allTunes = Object.entries(stockPatterns);
   const randomItem = (arr) => arr[Math.floor(Math.random() * arr.length)];
-  const [name, code] = randomItem(allTunes);
-  return { name, code };
+  const [id, data] = randomItem(allTunes);
+  return data;
 }
 
 export function loadModules() {
   let modules = [
-    import('@strudel.cycles/core'),
-    import('@strudel.cycles/tonal'),
-    import('@strudel.cycles/mini'),
-    import('@strudel.cycles/xen'),
-    import('@strudel.cycles/webaudio'),
+    import('@strudel/core'),
+    import('@strudel/tonal'),
+    import('@strudel/mini'),
+    import('@strudel/xen'),
+    import('@strudel/webaudio'),
     import('@strudel/codemirror'),
     import('@strudel/hydra'),
-    import('@strudel.cycles/serial'),
-    import('@strudel.cycles/soundfonts'),
-    import('@strudel.cycles/csound'),
+    import('@strudel/serial'),
+    import('@strudel/soundfonts'),
+    import('@strudel/csound'),
   ];
   if (isTauri()) {
     modules = modules.concat([
@@ -97,7 +79,7 @@ export function loadModules() {
       import('@strudel/desktopbridge/oscbridge.mjs'),
     ]);
   } else {
-    modules = modules.concat([import('@strudel.cycles/midi'), import('@strudel.cycles/osc')]);
+    modules = modules.concat([import('@strudel/midi'), import('@strudel/osc')]);
   }
 
   return evalScope(

@@ -1,4 +1,4 @@
-import { code2hash, evalScope } from '@strudel.cycles/core';
+import { code2hash, evalScope } from '@strudel/core';
 
 import { Panel } from '@src/repl/panel/Panel';
 import { StrudelFrame } from './StrudelFrame';

@@ -164,7 +164,7 @@ export function PatternsTab({ context }) {
             <h2 className="text-xl mb-2">{collection}</h2>
             <div className="font-mono text-sm">
               <PatternButtons
-                onClick={(id) => updateCodeWindow({ ...patterns[id], collection }, true)}
+                onClick={(id) => updateCodeWindow({ ...patterns[id], collection }, false)}
                 started={context.started}
                 patterns={patterns}
                 activePattern={activePattern}

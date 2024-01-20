@@ -38,6 +38,7 @@ function NumberInput({ value, onChange, label = '', min, max }) {
 const defaultHash = 'c3RhY2soCiAgCik%3D';
 
 const getHashesFromUrl = () => {
+  console.log(window.location.hash);
   return window.location.hash?.slice(1).split(',');
 };
 const updateURLHashes = (hashes) => {
@@ -47,7 +48,7 @@ const updateURLHashes = (hashes) => {
 export function Oodles() {
   const hashes = getHashesFromUrl();
 
-  const [numWindows, setNumWindows] = useState(hashes.length);
+  const [numWindows, setNumWindows] = useState(Math.max(hashes.length, 2));
   const numWindowsOnChange = (num) => {
     setNumWindows(num);
     const hashes = getHashesFromUrl();

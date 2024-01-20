@@ -40,9 +40,12 @@ function PatternButton({ showOutline, onClick, pattern, showHiglight }) {
   );
 }
 
+const parseJSON = (json) => {
+  return json != null && json.length ? json : '{}';
+};
 function PatternButtons({ patterns, activePattern, onClick, started }) {
   const viewingPatternStore = useViewingPatternData();
-  const viewingPatternData = JSON.parse(viewingPatternStore);
+  const viewingPatternData = parseJSON(viewingPatternStore);
   const viewingPatternID = viewingPatternData.id;
   return (
     <div className="font-mono text-sm">
@@ -76,7 +79,7 @@ function ActionButton({ children, onClick, label, labelIsHidden }) {
 export function PatternsTab({ context }) {
   const activePattern = useActivePattern();
   const viewingPatternStore = useViewingPatternData();
-  const viewingPatternData = JSON.parse(viewingPatternStore);
+  const viewingPatternData = parseJSON(viewingPatternStore);
 
   const { userPatterns } = useSettings();
   const examplePatterns = useExamplePatterns();

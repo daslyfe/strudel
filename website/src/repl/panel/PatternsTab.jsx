@@ -10,6 +10,7 @@ import {
 import { useMemo } from 'react';
 import { getMetadata } from '../../metadata_parser';
 import { useExamplePatterns } from '../useExamplePatterns';
+import { parseJSON } from '../util.mjs';
 
 function classNames(...classes) {
   return classes.filter(Boolean).join(' ');

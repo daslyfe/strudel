@@ -48,7 +48,7 @@ const updateURLHashes = (hashes) => {
 export function Oodles() {
   const hashes = getHashesFromUrl();
 
-  const [numWindows, setNumWindows] = useState(Math.max(hashes.length, 2));
+  const [numWindows, setNumWindows] = useState(hashes?.length ?? 1);
   const numWindowsOnChange = (num) => {
     setNumWindows(num);
     const hashes = getHashesFromUrl();

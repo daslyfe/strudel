@@ -41,9 +41,6 @@ function PatternButton({ showOutline, onClick, pattern, showHiglight }) {
   );
 }
 
-const parseJSON = (json) => {
-  return json != null && json.length ? json : '{}';
-};
 function PatternButtons({ patterns, activePattern, onClick, started }) {
   const viewingPatternStore = useViewingPatternData();
   const viewingPatternData = parseJSON(viewingPatternStore);

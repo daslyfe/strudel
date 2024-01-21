@@ -1,9 +1,7 @@
-import { code2hash, evalScope } from '@strudel/core';
+import { code2hash } from '@strudel/core';
 
-import { Panel } from '@src/repl/panel/Panel';
 import { StrudelFrame } from './StrudelFrame';
-import { useEffect, useState } from 'react';
-import { prebake } from '../../../src/repl/prebake.mjs';
+import { useState } from 'react';
 
 function NumberInput({ value, onChange, label = '', min, max }) {
   const [localState, setLocalState] = useState(value);
@@ -38,7 +36,6 @@ function NumberInput({ value, onChange, label = '', min, max }) {
 const defaultHash = 'c3RhY2soCiAgCik%3D';
 
 const getHashesFromUrl = () => {
-  console.log(window.location.hash);
   return window.location.hash?.slice(1).split(',');
 };
 const updateURLHashes = (hashes) => {

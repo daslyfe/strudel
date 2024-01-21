@@ -29,6 +29,7 @@ import { prebake } from './prebake.mjs';
 import { getRandomTune, initCode, loadModules, shareCode, ReplContext } from './util.mjs';
 import PlayCircleIcon from '@heroicons/react/20/solid/PlayCircleIcon';
 import './Repl.css';
+import useEvent from '@src/useEvent.mjs';
 
 const { code: randomTune, name } = getRandomTune();
 const { latestCode } = settingsMap.get();
@@ -201,6 +202,15 @@ export function Repl({ embedded = false }) {
     handleShare,
     handleEvaluate,
   };
+  useEffect(() => {
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'ShiftRight') {
+        e.preventDefault();
+        e.stopPropagation();
+        handleEvaluate();
+      }
+    });
+  }, []);
 
   const showPanel = !isEmbedded || window.parent?.location?.pathname?.includes('oodles');
 

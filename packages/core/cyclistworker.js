@@ -1,9 +1,6 @@
 const allPorts = [];
 let cps = 1;
 let num_ticks_since_cps_change = 0;
-let lastTick = 0; // absolute time when last tick (clock callback) happened
-let lastBegin = 0; // query begin of last tick
-let lastEnd = 0; // query end of last tick
 let num_cycles_at_cps_change = 0;
 let interval = 0.1;
 let started = false;
@@ -34,36 +31,28 @@ const log = (text, type) => {
 
 const numClientsConnected = () => allPorts.length;
 
-const getCycle = () => {
-  const secondsSinceLastTick = getTime() - lastTick - clock.duration;
-  const cycle = lastBegin + secondsSinceLastTick * cps;
-  return cycle;
-};
 // let prevtime = 0;
 let clock = createClock(
   getTime,
   // called slightly before each cycle
   (phase, duration, tick) => {
+    const eventLength = duration * cps;
+    const num_cycles_since_cps_change = num_ticks_since_cps_change * eventLength;
+    const begin = num_cycles_at_cps_change + num_cycles_since_cps_change;
     if (num_ticks_since_cps_change === 0) {
-      num_cycles_at_cps_change = lastEnd;
+      num_cycles_at_cps_change = begin;
     }
     num_ticks_since_cps_change++;
-    // const now = Date.now();
-    // console.log('interval', now - prevtime);
-    // prevtime = now;
+    const time = getTime();
+    const tickdeadline = phase - time; // time left until the phase is a whole number
+    const end = begin + eventLength;
+
+    const lastTick = time + tickdeadline;
+    const secondsSinceLastTick = time - lastTick - clock.duration;
+    const cycle = begin + secondsSinceLastTick * cps;
+
     try {
-      const time = getTime();
-      const begin = lastEnd;
-      lastBegin = begin;
-      //convert ticks to cycles, so you can query the pattern for events
-      const eventLength = duration * cps;
-      const num_cycles_since_cps_change = num_ticks_since_cps_change * eventLength;
-      const end = num_cycles_at_cps_change + num_cycles_since_cps_change;
-      lastEnd = end;
-      const tickdeadline = phase - time; // time left until the phase is a whole number
-      console.log(lastBegin);
-      lastTick = time + tickdeadline;
-      sendMessage('tick', { begin, end, tickdeadline, cps, cycle: getCycle() });
+      sendMessage('tick', { begin, end, tickdeadline, cps, cycle });
     } catch (e) {
       log(`[cyclist] error: ${e.message}`, 'error');
     }
@@ -104,11 +93,8 @@ const processMessage = (message) => {
       break;
     }
     case 'setcycle': {
-      console.log(payload);
       num_ticks_since_cps_change = 0;
       num_cycles_at_cps_change = payload.cycle;
-      lastBegin = 0;
-      lastEnd = 0;
     }
   }
 };
@@ -120,7 +106,6 @@ function createClock(
   interval = 0.1, // interval between callbacks
   overlap = 0.1, // overlap between callbacks
 ) {
-  console.log('hereee');
   let tick = 0; // counts callbacks
   let phase = 0; // next callback time
   let precision = 10 ** 4; // used to round phase

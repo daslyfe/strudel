@@ -61,6 +61,9 @@ export class NeoCyclist {
   setCps(cps = 1) {
     this.sendMessage('cpschange', { cps });
   }
+  setCycle(cycle) {
+    this.sendMessage('setcycle', { cycle });
+  }
   setStarted(started) {
     this.sendMessage('toggle', { started });
     this.started = started;

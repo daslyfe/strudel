@@ -55,7 +55,7 @@ export const codemirrorSettings = persistentAtom('codemirror-settings', defaultS
 });
 
 // https://codemirror.net/docs/guide/
-export function initEditor({ initialCode = '', onChange, onEvaluate, onStop, root }) {
+export function initEditor({ initialCode = '', onChange, onEvaluate, onSetCycle, onStop, root }) {
   const settings = codemirrorSettings.get();
   const initialSettings = Object.keys(compartments).map((key) =>
     compartments[key].of(extensions[key](parseBooleans(settings[key]))),
@@ -86,6 +86,11 @@ export function initEditor({ initialCode = '', onChange, onEvaluate, onStop, roo
             key: 'Alt-Enter',
             run: () => onEvaluate?.(),
           },
+          {
+            key: 'Meta-.',
+            run: () => onSetCycle(0),
+          },
+
           {
             key: 'Ctrl-.',
             run: () => onStop?.(),
@@ -200,6 +205,10 @@ export class StrudelMirror {
           this.repl.setCode?.(this.code);
         }
       },
+      onSetCycle: (cycle) => {
+        this.repl.setCycle(cycle);
+        this.evaluate();
+      },
       onEvaluate: () => this.evaluate(),
       onStop: () => this.stop(),
     });
@@ -247,6 +256,7 @@ export class StrudelMirror {
     this.flash();
     await this.repl.evaluate(this.code);
   }
+
   async stop() {
     this.repl.scheduler.stop();
   }

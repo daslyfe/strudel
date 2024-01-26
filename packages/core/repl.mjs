@@ -81,6 +81,9 @@ export function repl({
   const toggle = () => scheduler.toggle();
   const setCps = (cps) => scheduler.setCps(cps);
   const setCpm = (cpm) => scheduler.setCps(cpm / 60);
+  const setCycle = (cycle) => {
+    scheduler.setCycle(cycle);
+  };
   const all = function (transform) {
     allTransform = transform;
     return silence;
@@ -164,7 +167,7 @@ export function repl({
     }
   };
   const setCode = (code) => updateState({ code });
-  return { scheduler, evaluate, start, stop, pause, setCps, setPattern, setCode, toggle, state };
+  return { scheduler, evaluate, start, stop, pause, setCps, setCycle, setPattern, setCode, toggle, state };
 }
 
 export const getTrigger =

@@ -61,6 +61,7 @@ let clock = createClock(
       const end = num_cycles_at_cps_change + num_cycles_since_cps_change;
       lastEnd = end;
       const tickdeadline = phase - time; // time left until the phase is a whole number
+      console.log(lastBegin);
       lastTick = time + tickdeadline;
       sendMessage('tick', { begin, end, tickdeadline, cps, cycle: getCycle() });
     } catch (e) {
@@ -102,6 +103,13 @@ const processMessage = (message) => {
       }
       break;
     }
+    case 'setcycle': {
+      console.log(payload);
+      num_ticks_since_cps_change = 0;
+      num_cycles_at_cps_change = payload.cycle;
+      lastBegin = 0;
+      lastEnd = 0;
+    }
   }
 };
 
@@ -112,6 +120,7 @@ function createClock(
   interval = 0.1, // interval between callbacks
   overlap = 0.1, // overlap between callbacks
 ) {
+  console.log('hereee');
   let tick = 0; // counts callbacks
   let phase = 0; // next callback time
   let precision = 10 ** 4; // used to round phase

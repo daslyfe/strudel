@@ -51,11 +51,7 @@ let clock = createClock(
     const secondsSinceLastTick = time - lastTick - clock.duration;
     const cycle = begin + secondsSinceLastTick * cps;
 
-    try {
-      sendMessage('tick', { begin, end, tickdeadline, cps, cycle });
-    } catch (e) {
-      log(`[cyclist] error: ${e.message}`, 'error');
-    }
+    sendMessage('tick', { begin, end, tickdeadline, cps, cycle });
   },
   interval, // duration of each cycle
 );
@@ -111,7 +107,6 @@ function createClock(
   let precision = 10 ** 4; // used to round phase
   let minLatency = 0.01;
 
-  const setDuration = (setter) => (duration = setter(duration));
   overlap = overlap || interval / 2;
   const onTick = () => {
     const t = getTime();
@@ -122,7 +117,7 @@ function createClock(
 
     // callback as long as we're inside the lookahead
     while (phase < lookahead) {
-      phase = Math.round(phase * precision) / precision;
+      // phase = Math.round(phase * precision) / precision;
       phase >= t && callback(phase, duration, tick);
       phase < t && console.log('TOO LATE', phase); // what if latency is added from outside?
       phase += duration; // increment phase by duration

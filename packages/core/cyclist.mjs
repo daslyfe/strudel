@@ -16,53 +16,78 @@ export class Cyclist {
     this.lastBegin = 0; // query begin of last tick
     this.lastEnd = 0; // query end of last tick
     this.getTime = getTime; // get absolute time
+    this.worker = new SharedWorker(new URL('./zyklusworker.js', import.meta.url));
+    this.worker.port.start();
     this.num_cycles_at_cps_change = 0;
     this.onToggle = onToggle;
     this.latency = latency; // fixed trigger time offset
     this.nextCycleStartTime = 0;
+    this.worker_time_diff;
+
+    const callback = (phase, duration, tick, workertime) => {
+      const time = getTime();
+      if (tick === 0) {
+        this.origin = phase;
+      }
+      if (this.worker_time_diff == null) {
+        this.worker_time_diff = workertime - time;
+      }
+      if (this.num_ticks_since_cps_change === 0) {
+        this.num_cycles_at_cps_change = this.lastEnd;
+      }
+      this.num_ticks_since_cps_change++;
+      try {
+        const begin = this.lastEnd;
+        this.lastBegin = begin;
+        //convert ticks to cycles, so you can query the pattern for events
+        const eventLength = duration * this.cps;
+        const num_cycles_since_cps_change = this.num_ticks_since_cps_change * eventLength;
+        const end = this.num_cycles_at_cps_change + num_cycles_since_cps_change;
+        this.lastEnd = end;
+
+        // query the pattern for events
+        const haps = this.pattern.queryArc(begin, end, { _cps: this.cps });
+
+        const tickdeadline = phase - time - this.worker_time_diff; // time left until the phase is a whole number
+
+        this.lastTick = time + tickdeadline;
+
+        haps.forEach((hap) => {
+          if (hap.part.begin.equals(hap.whole.begin)) {
+            const deadline = (hap.whole.begin - begin) / this.cps + tickdeadline + latency;
+            const duration = hap.duration / this.cps;
+            onTrigger?.(hap, deadline, duration, this.cps);
+          }
+        });
+      } catch (e) {
+        logger(`[cyclist] error: ${e.message}`);
+        onError?.(e);
+      }
+    };
+    this.worker.port.addEventListener('message', (message) => {
+      console.count(message);
+      if (!this.started) {
+        return;
+      }
+      const { payload, type } = message.data;
+
+      switch (type) {
+        case 'tick': {
+          const { duration, phase, tick, time } = payload;
+          callback(phase, duration, tick, time);
+        }
+      }
+    });
 
     this.clock = createClock(
       getTime,
       // called slightly before each cycle
-      (phase, duration, tick) => {
-        if (tick === 0) {
-          this.origin = phase;
-        }
-        if (this.num_ticks_since_cps_change === 0) {
-          this.num_cycles_at_cps_change = this.lastEnd;
-        }
-        this.num_ticks_since_cps_change++;
-        try {
-          const time = getTime();
-          const begin = this.lastEnd;
-          this.lastBegin = begin;
-          //convert ticks to cycles, so you can query the pattern for events
-          const eventLength = duration * this.cps;
-          const num_cycles_since_cps_change = this.num_ticks_since_cps_change * eventLength;
-          const end = this.num_cycles_at_cps_change + num_cycles_since_cps_change;
-          this.lastEnd = end;
-
-          // query the pattern for events
-          const haps = this.pattern.queryArc(begin, end, { _cps: this.cps });
-
-          const tickdeadline = phase - time; // time left until the phase is a whole number
-
-          this.lastTick = time + tickdeadline;
-
-          haps.forEach((hap) => {
-            if (hap.part.begin.equals(hap.whole.begin)) {
-              const deadline = (hap.whole.begin - begin) / this.cps + tickdeadline + latency;
-              const duration = hap.duration / this.cps;
-              onTrigger?.(hap, deadline, duration, this.cps);
-            }
-          });
-        } catch (e) {
-          logger(`[cyclist] error: ${e.message}`);
-          onError?.(e);
-        }
-      },
+      () => {},
       interval, // duration of each cycle
     );
+  }
+  sendMessage(type, payload) {
+    this.worker.port.postMessage({ type, payload });
   }
   now() {
     const secondsSinceLastTick = this.getTime() - this.lastTick - this.clock.duration;
@@ -81,6 +106,8 @@ export class Cyclist {
     logger('[cyclist] start');
     this.clock.start();
     this.setStarted(true);
+    this.sendMessage('toggle', { started: this.started });
+    // this.started = started;
   }
   pause() {
     logger('[cyclist] pause');
@@ -92,6 +119,7 @@ export class Cyclist {
     this.clock.stop();
     this.lastEnd = 0;
     this.setStarted(false);
+    this.sendMessage('toggle', { started: this.started });
   }
   setPattern(pat, autostart = false) {
     this.pattern = pat;

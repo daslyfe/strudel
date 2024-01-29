@@ -1,7 +1,7 @@
 import { logger } from './logger.mjs';
 
 export class NeoCyclist {
-  constructor({ onTrigger, onToggle, latency = 0.1, onError }) {
+  constructor({ onTrigger, onToggle, latency = 0.1, onError, getTime }) {
     this.started = false;
     this.pattern;
     this.onToggle = onToggle;

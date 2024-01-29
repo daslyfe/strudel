@@ -38,27 +38,27 @@ export function repl({
     onUpdateState?.(state);
   };
 
-  // const scheduler = new Cyclist({
-  //   interval,
-  //   onTrigger: getTrigger({ defaultOutput, getTime }),
-  //   onError: onSchedulerError,
-  //   getTime,
-  //   onToggle: (started) => {
-  //     updateState({ started });
-  //     onToggle?.(started);
-  //   },
-  // });
-
-  const scheduler = new NeoCyclist({
-    // interval,
+  const scheduler = new Cyclist({
+    interval,
     onTrigger: getTrigger({ defaultOutput, getTime }),
     onError: onSchedulerError,
-    // latency: 0.22,
+    getTime,
     onToggle: (started) => {
       updateState({ started });
       onToggle?.(started);
     },
   });
+
+  // const scheduler = new NeoCyclist({
+  //   // interval,
+  //   onTrigger: getTrigger({ defaultOutput, getTime }),
+  //   onError: onSchedulerError,
+  //   // latency: 0.22,
+  //   onToggle: (started) => {
+  //     updateState({ started });
+  //     onToggle?.(started);
+  //   },
+  // });
 
   let pPatterns = {};
   let allTransform;

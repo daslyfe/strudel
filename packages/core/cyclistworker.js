@@ -136,13 +136,11 @@ function createClock(
     intervalID = setInterval(onTick, interval * 1000);
   };
   const clear = () => intervalID !== undefined && clearInterval(intervalID);
-  const pause = () => clear();
   const stop = () => {
     tick = 0;
     phase = 0;
     clear();
   };
-  const getPhase = () => phase;
 
-  return { setDuration, start, stop, pause, duration, interval, getPhase, minLatency };
+  return { start, stop, duration };
 }

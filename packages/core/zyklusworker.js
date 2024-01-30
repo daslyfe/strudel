@@ -1,5 +1,8 @@
 const getTime = () => performance.now() / 1000;
 const allPorts = [];
+let num_cycles_at_cps_change = 0;
+let num_ticks_since_cps_change = 0;
+let cps = 0.5;
 
 const sendMessage = (type, payload) => {
   allPorts.forEach((port) => {
@@ -8,7 +11,8 @@ const sendMessage = (type, payload) => {
 };
 
 const sendTick = (phase, duration, tick, time) => {
-  sendMessage('tick', { phase, duration, tick, time });
+  sendMessage('tick', { phase, duration, tick, time, cps, num_cycles_at_cps_change, num_ticks_since_cps_change });
+  num_ticks_since_cps_change++;
 };
 const interval = 0.1;
 let clock = createClock(getTime, sendTick, interval);
@@ -19,6 +23,13 @@ const processMessage = (message) => {
   const { type, payload } = message;
 
   switch (type) {
+    case 'cpschange': {
+      if (payload.cps !== cps) {
+        cps = payload.cps;
+        num_ticks_since_cps_change = 0;
+      }
+      break;
+    }
     case 'toggle': {
       if (payload.started && !started) {
         started = true;

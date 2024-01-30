@@ -53,6 +53,7 @@ export function repl({
   //   // interval,
   //   onTrigger: getTrigger({ defaultOutput, getTime }),
   //   onError: onSchedulerError,
+  //   getTime,
   //   // latency: 0.22,
   //   onToggle: (started) => {
   //     updateState({ started });

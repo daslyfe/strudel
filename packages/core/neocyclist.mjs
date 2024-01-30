@@ -8,9 +8,11 @@ export class NeoCyclist {
     this.latency = latency;
     this.worker = new SharedWorker(new URL('./cyclistworker.js', import.meta.url));
     this.worker.port.start();
+    this.getTime = getTime;
     this.cycle = 0;
     this.cps = 1;
     this.timeAtLastTick = 0;
+    this.worker_time_diff = 0;
     this.worker.port.addEventListener('message', (message) => {
       if (!this.started) {
         return;
@@ -19,13 +21,19 @@ export class NeoCyclist {
 
       switch (type) {
         case 'tick': {
-          const now = performance.now();
+          const now = this.getTime();
           // const interval = 0.1;
           // const timeSinceLastMessage = now - this.timeAtLastTickMessage;
           // const messageLag = (interval * 1000 - timeSinceLastMessage) / 1000;
 
           this.timeAtLastTickMessage = now;
-          let { begin, end, cps, tickdeadline, cycle } = payload;
+          let { begin, end, cps, cycle } = payload;
+
+          if (this.cycle === 0) {
+            this.worker_time_diff = payload.time - now;
+          }
+          const tickdeadline = payload.tickdeadline;
+          console.log(tickdeadline, this.worker_time_diff);
           this.cps = cps;
           this.cycle = cycle + latency * cps;
 
@@ -55,7 +63,7 @@ export class NeoCyclist {
   }
 
   now() {
-    const gap = ((performance.now() - this.timeAtLastTickMessage) / 1000) * this.cps;
+    const gap = (this.getTime() - this.timeAtLastTickMessage) * this.cps;
     return this.cycle + gap;
   }
   setCps(cps = 1) {

@@ -32,6 +32,30 @@ const log = (text, type) => {
 const numClientsConnected = () => allPorts.length;
 
 // let prevtime = 0;
+// let clock = createClock(
+//   getTime,
+//   // called slightly before each cycle
+//   (phase, duration, tick) => {
+//     const eventLength = duration * cps;
+//     const num_cycles_since_cps_change = num_ticks_since_cps_change * eventLength;
+//     const begin = num_cycles_at_cps_change + num_cycles_since_cps_change;
+//     if (num_ticks_since_cps_change === 0) {
+//       num_cycles_at_cps_change = begin;
+//     }
+//     num_ticks_since_cps_change++;
+//     const time = getTime();
+//     const tickdeadline = phase - time; // time left until the phase is a whole number
+//     const end = begin + eventLength;
+
+//     const lastTick = time + tickdeadline;
+//     const secondsSinceLastTick = time - lastTick - clock.duration;
+//     const cycle = begin + secondsSinceLastTick * cps;
+
+//     sendMessage('tick', { begin, end, tickdeadline, cps, cycle, time });
+//   },
+//   interval, // duration of each cycle
+// );
+
 let clock = createClock(
   getTime,
   // called slightly before each cycle
@@ -51,7 +75,7 @@ let clock = createClock(
     const secondsSinceLastTick = time - lastTick - clock.duration;
     const cycle = begin + secondsSinceLastTick * cps;
 
-    sendMessage('tick', { begin, end, tickdeadline, cps, cycle });
+    sendMessage('tick', { begin, end, tickdeadline, cps, cycle, time });
   },
   interval, // duration of each cycle
 );
@@ -117,7 +141,7 @@ function createClock(
 
     // callback as long as we're inside the lookahead
     while (phase < lookahead) {
-      // phase = Math.round(phase * precision) / precision;
+      phase = Math.round(phase * precision) / precision;
       phase >= t && callback(phase, duration, tick);
       phase < t && console.log('TOO LATE', phase); // what if latency is added from outside?
       phase += duration; // increment phase by duration

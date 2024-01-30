@@ -23,49 +23,73 @@ export class Cyclist {
     this.latency = latency; // fixed trigger time offset
     this.nextCycleStartTime = 0;
     this.worker_time_diff;
+    this.cycle = 0;
+    this.prev_cps = 0;
+
+    // const callback2 = (phase, duration, tick, workertime) => {
+    //   const time = getTime();
+    //   const eventLength = duration * this.cps;
+    //   if (this.cps !== this.prev_cps) {
+    //     this.num_cycles_at_cps_change = this.num_cycles_at_cps_change + this.num_ticks_since_cps_change * eventLength;
+    //     this.num_ticks_since_cps_change = 0;
+    //   }
+    //   const num_cycles_since_cps_change = this.num_ticks_since_cps_change * eventLength;
+    //   const begin = this.num_cycles_at_cps_change + num_cycles_since_cps_change;
+    //   if (this.worker_time_diff == null) {
+    //     this.worker_time_diff = workertime - time;
+    //   }
+
+    //   this.prev_cps = this.cps;
+    //   this.num_ticks_since_cps_change++;
+
+    //   const tickdeadline = phase - time - this.worker_time_diff; // time left until the phase is a whole number
+    //   const end = begin + eventLength;
+
+    //   const lastTick = time + tickdeadline;
+    //   const secondsSinceLastTick = time - lastTick - duration;
+    //   this.cycle = begin + secondsSinceLastTick * this.cps;
+    //   processHaps(begin, end, tickdeadline);
+    // };
+
+    const processHaps = (begin, end, tickdeadline) => {
+      const haps = this.pattern.queryArc(begin, end, { _cps: this.cps });
+
+      haps.forEach((hap) => {
+        if (hap.part.begin.equals(hap.whole.begin)) {
+          const deadline = (hap.whole.begin - begin) / this.cps + tickdeadline + latency;
+          const duration = hap.duration / this.cps;
+          onTrigger?.(hap, deadline, duration, this.cps);
+        }
+      });
+    };
 
     const callback = (phase, duration, tick, workertime) => {
       const time = getTime();
-      if (tick === 0) {
-        this.origin = phase;
-      }
-      if (this.worker_time_diff == null) {
-        this.worker_time_diff = workertime - time;
-      }
+
       if (this.num_ticks_since_cps_change === 0) {
+        this.worker_time_diff = workertime - time;
         this.num_cycles_at_cps_change = this.lastEnd;
       }
       this.num_ticks_since_cps_change++;
-      try {
-        const begin = this.lastEnd;
-        this.lastBegin = begin;
-        //convert ticks to cycles, so you can query the pattern for events
-        const eventLength = duration * this.cps;
-        const num_cycles_since_cps_change = this.num_ticks_since_cps_change * eventLength;
-        const end = this.num_cycles_at_cps_change + num_cycles_since_cps_change;
-        this.lastEnd = end;
 
-        // query the pattern for events
-        const haps = this.pattern.queryArc(begin, end, { _cps: this.cps });
+      const begin = this.lastEnd;
+      this.lastBegin = begin;
+      //convert ticks to cycles, so you can query the pattern for events
+      const eventLength = duration * this.cps;
+      const num_cycles_since_cps_change = this.num_ticks_since_cps_change * eventLength;
+      const end = this.num_cycles_at_cps_change + num_cycles_since_cps_change;
+      this.lastEnd = end;
 
-        const tickdeadline = phase - time - this.worker_time_diff; // time left until the phase is a whole number
+      // query the pattern for events
 
-        this.lastTick = time + tickdeadline;
-
-        haps.forEach((hap) => {
-          if (hap.part.begin.equals(hap.whole.begin)) {
-            const deadline = (hap.whole.begin - begin) / this.cps + tickdeadline + latency;
-            const duration = hap.duration / this.cps;
-            onTrigger?.(hap, deadline, duration, this.cps);
-          }
-        });
-      } catch (e) {
-        logger(`[cyclist] error: ${e.message}`);
-        onError?.(e);
-      }
+      const tickdeadline = phase - time - this.worker_time_diff; // time left until the phase is a whole number
+      const lastTick = time + tickdeadline;
+      const secondsSinceLastTick = time - lastTick - duration;
+      this.cycle = begin + secondsSinceLastTick * this.cps;
+      this.lastTick = time + tickdeadline;
+      processHaps(begin, end, tickdeadline);
     };
     this.worker.port.addEventListener('message', (message) => {
-      console.count(message);
       if (!this.started) {
         return;
       }
@@ -74,7 +98,9 @@ export class Cyclist {
       switch (type) {
         case 'tick': {
           const { duration, phase, tick, time } = payload;
+          this.time_at_last_tick_message = getTime();
           callback(phase, duration, tick, time);
+          // callback2(phase, duration, tick, time);
         }
       }
     });
@@ -89,9 +115,14 @@ export class Cyclist {
   sendMessage(type, payload) {
     this.worker.port.postMessage({ type, payload });
   }
+  // now() {
+  //   const secondsSinceLastTick = this.getTime() - this.lastTick - this.clock.duration;
+  //   return this.lastBegin + secondsSinceLastTick * this.cps; // + this.clock.minLatency;
+  // }
+
   now() {
-    const secondsSinceLastTick = this.getTime() - this.lastTick - this.clock.duration;
-    return this.lastBegin + secondsSinceLastTick * this.cps; // + this.clock.minLatency;
+    const gap = (this.getTime() - this.time_at_last_tick_message) * this.cps;
+    return this.cycle + gap;
   }
   setStarted(v) {
     this.started = v;
@@ -131,8 +162,8 @@ export class Cyclist {
     if (this.cps === cps) {
       return;
     }
-    this.cps = cps;
     this.num_ticks_since_cps_change = 0;
+    this.cps = cps;
   }
   log(begin, end, haps) {
     const onsets = haps.filter((h) => h.hasOnset());

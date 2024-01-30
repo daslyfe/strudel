@@ -10,8 +10,7 @@ import { logger } from './logger.mjs';
 export class Cyclist {
   constructor({ interval, onTrigger, onToggle, onError, getTime, latency = 0.1 }) {
     this.started = false;
-    this.cps = 1;
-    this.num_ticks_since_cps_change = 0;
+    this.cps = 0.5;
     this.lastTick = 0; // absolute time when last tick (clock callback) happened
     this.lastBegin = 0; // query begin of last tick
     this.lastEnd = 0; // query end of last tick
@@ -21,35 +20,31 @@ export class Cyclist {
     this.num_cycles_at_cps_change = 0;
     this.onToggle = onToggle;
     this.latency = latency; // fixed trigger time offset
-    this.nextCycleStartTime = 0;
     this.worker_time_diff;
     this.cycle = 0;
-    this.prev_cps = 0;
 
-    // const callback2 = (phase, duration, tick, workertime) => {
-    //   const time = getTime();
-    //   const eventLength = duration * this.cps;
-    //   if (this.cps !== this.prev_cps) {
-    //     this.num_cycles_at_cps_change = this.num_cycles_at_cps_change + this.num_ticks_since_cps_change * eventLength;
-    //     this.num_ticks_since_cps_change = 0;
-    //   }
-    //   const num_cycles_since_cps_change = this.num_ticks_since_cps_change * eventLength;
-    //   const begin = this.num_cycles_at_cps_change + num_cycles_since_cps_change;
-    //   if (this.worker_time_diff == null) {
-    //     this.worker_time_diff = workertime - time;
-    //   }
+    const callback2 = (payload) => {
+      const workertime = payload.time;
+      const time = this.getTime();
 
-    //   this.prev_cps = this.cps;
-    //   this.num_ticks_since_cps_change++;
+      const { duration, phase, num_ticks_since_cps_change, num_cycles_at_cps_change, cps } = payload;
+      if (this.worker_time_diff == null) {
+        this.worker_time_diff = workertime - time;
+      }
+      this.cps = cps;
+      const eventLength = duration * cps;
+      const num_cycles_since_cps_change = num_ticks_since_cps_change * eventLength;
+      const begin = num_cycles_at_cps_change + num_cycles_since_cps_change;
 
-    //   const tickdeadline = phase - time - this.worker_time_diff; // time left until the phase is a whole number
-    //   const end = begin + eventLength;
+      const tickdeadline = phase - time - this.worker_time_diff; // time left until the phase is a whole number
+      const end = begin + eventLength;
 
-    //   const lastTick = time + tickdeadline;
-    //   const secondsSinceLastTick = time - lastTick - duration;
-    //   this.cycle = begin + secondsSinceLastTick * this.cps;
-    //   processHaps(begin, end, tickdeadline);
-    // };
+      const lastTick = time + tickdeadline;
+      const secondsSinceLastTick = time - lastTick - duration;
+      this.cycle = begin + secondsSinceLastTick * cps;
+
+      processHaps(begin, end, tickdeadline);
+    };
 
     const processHaps = (begin, end, tickdeadline) => {
       const haps = this.pattern.queryArc(begin, end, { _cps: this.cps });
@@ -63,32 +58,36 @@ export class Cyclist {
       });
     };
 
-    const callback = (phase, duration, tick, workertime) => {
-      const time = getTime();
+    // const callback = (payload) => {
+    //   const workertime = payload.time;
+    //   const { duration, phase, num_ticks_since_cps_change, num_cycles_at_cps_change, cps } = payload;
+    //   this.cps = cps;
+    //   const time = getTime();
+    //   console.log({ time });
 
-      if (this.num_ticks_since_cps_change === 0) {
-        this.worker_time_diff = workertime - time;
-        this.num_cycles_at_cps_change = this.lastEnd;
-      }
-      this.num_ticks_since_cps_change++;
+    //   // if (this.worker_time_diff == null) {
+    //   this.worker_time_diff = workertime - time;
+    //   // }
 
-      const begin = this.lastEnd;
-      this.lastBegin = begin;
-      //convert ticks to cycles, so you can query the pattern for events
-      const eventLength = duration * this.cps;
-      const num_cycles_since_cps_change = this.num_ticks_since_cps_change * eventLength;
-      const end = this.num_cycles_at_cps_change + num_cycles_since_cps_change;
-      this.lastEnd = end;
+    //   const begin = this.lastEnd;
+    //   this.lastBegin = begin;
+    //   //convert ticks to cycles, so you can query the pattern for events
+    //   const eventLength = duration * this.cps;
+    //   const num_cycles_since_cps_change = num_ticks_since_cps_change * eventLength;
+    //   const end = num_cycles_at_cps_change + num_cycles_since_cps_change;
+    //   this.lastEnd = end;
 
-      // query the pattern for events
+    //   // query the pattern for events
 
-      const tickdeadline = phase - time - this.worker_time_diff; // time left until the phase is a whole number
-      const lastTick = time + tickdeadline;
-      const secondsSinceLastTick = time - lastTick - duration;
-      this.cycle = begin + secondsSinceLastTick * this.cps;
-      this.lastTick = time + tickdeadline;
-      processHaps(begin, end, tickdeadline);
-    };
+    //   const tickdeadline = phase - time - this.worker_time_diff; // time left until the phase is a whole number
+    //   console.log({ tickdeadline });
+    //   this.lastTick = time + tickdeadline;
+    //   const secondsSinceLastTick = time - this.lastTick - duration;
+    //   this.cycle = begin + secondsSinceLastTick * this.cps;
+
+    //   processHaps(begin, end, tickdeadline);
+    // };
+
     this.worker.port.addEventListener('message', (message) => {
       if (!this.started) {
         return;
@@ -97,16 +96,15 @@ export class Cyclist {
 
       switch (type) {
         case 'tick': {
-          const { duration, phase, tick, time } = payload;
-          this.time_at_last_tick_message = getTime();
-          callback(phase, duration, tick, time);
+          this.time_at_last_tick_message = this.getTime();
+          callback2(payload);
           // callback2(phase, duration, tick, time);
         }
       }
     });
 
     this.clock = createClock(
-      getTime,
+      this.getTime,
       // called slightly before each cycle
       () => {},
       interval, // duration of each cycle
@@ -124,33 +122,24 @@ export class Cyclist {
     const gap = (this.getTime() - this.time_at_last_tick_message) * this.cps;
     return this.cycle + gap;
   }
-  setStarted(v) {
-    this.started = v;
-    this.onToggle?.(v);
+  setCps(cps = 1) {
+    this.sendMessage('cpschange', { cps });
+  }
+  setCycle(cycle) {
+    this.sendMessage('setcycle', { cycle });
+  }
+  setStarted(started) {
+    this.sendMessage('toggle', { started });
+    this.started = started;
+    this.onToggle?.(started);
   }
   start() {
-    this.num_ticks_since_cps_change = 0;
-    this.num_cycles_at_cps_change = 0;
-    if (!this.pattern) {
-      throw new Error('Scheduler: no pattern set! call .setPattern first.');
-    }
     logger('[cyclist] start');
-    this.clock.start();
     this.setStarted(true);
-    this.sendMessage('toggle', { started: this.started });
-    // this.started = started;
-  }
-  pause() {
-    logger('[cyclist] pause');
-    this.clock.pause();
-    this.setStarted(false);
   }
   stop() {
     logger('[cyclist] stop');
-    this.clock.stop();
-    this.lastEnd = 0;
     this.setStarted(false);
-    this.sendMessage('toggle', { started: this.started });
   }
   setPattern(pat, autostart = false) {
     this.pattern = pat;
@@ -158,13 +147,7 @@ export class Cyclist {
       this.start();
     }
   }
-  setCps(cps = 1) {
-    if (this.cps === cps) {
-      return;
-    }
-    this.num_ticks_since_cps_change = 0;
-    this.cps = cps;
-  }
+
   log(begin, end, haps) {
     const onsets = haps.filter((h) => h.hasOnset());
     console.log(`${begin.toFixed(4)} - ${end.toFixed(4)} ${Array(onsets.length).fill('I').join('')}`);

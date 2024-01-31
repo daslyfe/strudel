@@ -51,7 +51,8 @@ export class Cyclist {
       // const tickdeadline = phase - phase_at_first_tick - (time - time_at_first_tick);
       // const tickdeadline = phase - workertime;
       const tick_diff = tick - tick_at_first_tick;
-      const tickdeadline = tick_diff * duration - time;
+      const tickdeadline = tick_diff * duration - time + 0.5;
+      console.log({ tickdeadline });
       // const time_diff = time - time_at_first_tick;
 
       // const num_callbacks = time_diff / 0.1;

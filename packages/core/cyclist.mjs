@@ -24,54 +24,34 @@ export class Cyclist {
     let tick_at_first_tick = 0;
     let time_at_first_tick = 0;
     let phase_at_first_tick = 0;
-    let worker_time_diff = 0;
     let deadlineatfirsttick = 0;
-    let prevtime = this.getTime();
+    let num_callbacks = 0;
     const callback2 = (payload) => {
       const workertime = payload.time;
-
       const time = this.getTime();
-      console.log(time - prevtime);
-      prevtime = time;
-
       const { duration, phase, num_ticks_since_cps_change, num_cycles_at_cps_change, tick, cps, date } = payload;
-      if (this.cycle === 0 || tick % 100 === 0) {
+      if (num_callbacks === 20 || num_callbacks === 0) {
         const date_diff = (Date.now() - date) / 1000;
-
-        worker_time_diff = workertime - time - date_diff;
         tick_at_first_tick = tick;
         time_at_first_tick = time - date_diff;
         phase_at_first_tick = phase;
         deadlineatfirsttick = phase_at_first_tick - workertime;
       }
 
-      // let d2 = (time - time_at_first_tick) / (tick - tick_at_first_tick);
-      // console.log({ d2 });
       this.cps = cps;
       const eventLength = duration * cps;
       const num_cycles_since_cps_change = num_ticks_since_cps_change * eventLength;
       const begin = num_cycles_at_cps_change + num_cycles_since_cps_change;
 
-      // const tickdeadline = phase - time - worker_time_diff; // time left until the phase is a whole number
-      // const tickdeadline = phase - phase_at_first_tick - (time - time_at_first_tick);
-      // const tickdeadline = phase - workertime;
       const tick_diff = tick - tick_at_first_tick;
-      const tickdeadline = tick_diff * duration - (time - time_at_first_tick) + deadlineatfirsttick;
-      // const tickdeadline = phase - workertime;
-      console.log({ tick, tickdeadline, tick_diff, duration });
-      // const time_diff = time - time_at_first_tick;
+      let tickdeadline = tick_diff * duration - (time - time_at_first_tick) + deadlineatfirsttick;
 
-      // const num_callbacks = time_diff / 0.1;
-
-      // // console.log(time + num_callbacks % 1);
-
-      // console.log(tickdeadline);
-      // console.log(tickdeadline, d2);
       const end = begin + eventLength;
 
       const lastTick = time + tickdeadline;
       const secondsSinceLastTick = time - lastTick - duration;
       this.cycle = begin + secondsSinceLastTick * cps;
+      num_callbacks++;
 
       processHaps(begin, end, tickdeadline);
     };
@@ -87,36 +67,6 @@ export class Cyclist {
         }
       });
     };
-
-    // const callback = (payload) => {
-    //   const workertime = payload.time;
-    //   const { duration, phase, num_ticks_since_cps_change, num_cycles_at_cps_change, cps } = payload;
-    //   this.cps = cps;
-    //   const time = getTime();
-    //   console.log({ time });
-
-    //   // if (this.worker_time_diff == null) {
-    //   this.worker_time_diff = workertime - time;
-    //   // }
-
-    //   const begin = this.lastEnd;
-    //   this.lastBegin = begin;
-    //   //convert ticks to cycles, so you can query the pattern for events
-    //   const eventLength = duration * this.cps;
-    //   const num_cycles_since_cps_change = num_ticks_since_cps_change * eventLength;
-    //   const end = num_cycles_at_cps_change + num_cycles_since_cps_change;
-    //   this.lastEnd = end;
-
-    //   // query the pattern for events
-
-    //   const tickdeadline = phase - time - this.worker_time_diff; // time left until the phase is a whole number
-    //   console.log({ tickdeadline });
-    //   this.lastTick = time + tickdeadline;
-    //   const secondsSinceLastTick = time - this.lastTick - duration;
-    //   this.cycle = begin + secondsSinceLastTick * this.cps;
-
-    //   processHaps(begin, end, tickdeadline);
-    // };
 
     this.worker.port.addEventListener('message', (message) => {
       if (!this.started) {
@@ -136,10 +86,6 @@ export class Cyclist {
   sendMessage(type, payload) {
     this.worker.port.postMessage({ type, payload });
   }
-  // now() {
-  //   const secondsSinceLastTick = this.getTime() - this.lastTick - this.clock.duration;
-  //   return this.lastBegin + secondsSinceLastTick * this.cps; // + this.clock.minLatency;
-  // }
 
   now() {
     const gap = (this.getTime() - this.time_at_last_tick_message) * this.cps;

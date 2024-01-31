@@ -4,7 +4,6 @@ Copyright (C) 2022 Strudel contributors - see <https://github.com/tidalcycles/st
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU Affero General Public License for more details. You should have received a copy of the GNU Affero General Public License along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import createClock from './zyklus.mjs';
 import { logger } from './logger.mjs';
 
 export class Cyclist {
@@ -25,27 +24,41 @@ export class Cyclist {
     let tick_at_first_tick = 0;
     let time_at_first_tick = 0;
     let phase_at_first_tick = 0;
+    let worker_time_diff = 0;
+    let deadlineatfirsttick = 0;
 
     const callback2 = (payload) => {
       const workertime = payload.time;
       const time = this.getTime();
-      console.log({ time });
 
       const { duration, phase, num_ticks_since_cps_change, num_cycles_at_cps_change, tick, cps } = payload;
       if (this.cycle === 0) {
+        worker_time_diff = workertime - time;
         tick_at_first_tick = tick;
         time_at_first_tick = time;
         phase_at_first_tick = phase;
+        deadlineatfirsttick = phase_at_first_tick - workertime;
       }
-      let d2 = (phase - phase_at_first_tick - (time - time_at_first_tick)) / (tick - tick_at_first_tick);
 
+      // let d2 = (time - time_at_first_tick) / (tick - tick_at_first_tick);
+      // console.log({ d2 });
       this.cps = cps;
       const eventLength = duration * cps;
       const num_cycles_since_cps_change = num_ticks_since_cps_change * eventLength;
       const begin = num_cycles_at_cps_change + num_cycles_since_cps_change;
 
-      // const tickdeadline = phase - time - this.worker_time_diff; // time left until the phase is a whole number
-      const tickdeadline = phase - phase_at_first_tick - (time - time_at_first_tick);
+      // const tickdeadline = phase - time - worker_time_diff; // time left until the phase is a whole number
+      // const tickdeadline = phase - phase_at_first_tick - (time - time_at_first_tick);
+      // const tickdeadline = phase - workertime;
+      const tick_diff = tick - tick_at_first_tick;
+      const tickdeadline = tick_diff * duration - time;
+      // const time_diff = time - time_at_first_tick;
+
+      // const num_callbacks = time_diff / 0.1;
+      // const tickdeadline = num_callbacks % 1;
+      // // console.log(time + num_callbacks % 1);
+
+      // console.log(tickdeadline);
       // console.log(tickdeadline, d2);
       const end = begin + eventLength;
 
@@ -112,13 +125,6 @@ export class Cyclist {
         }
       }
     });
-
-    this.clock = createClock(
-      this.getTime,
-      // called slightly before each cycle
-      () => {},
-      interval, // duration of each cycle
-    );
   }
   sendMessage(type, payload) {
     this.worker.port.postMessage({ type, payload });

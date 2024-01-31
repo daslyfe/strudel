@@ -6,7 +6,7 @@ function createClock(
   callback, // called slightly before each cycle
   duration = 0.05, // duration of each cycle
   interval = 0.1, // interval between callbacks
-  overlap = 0.1, // overlap between callbacks
+  overlap, // overlap between callbacks
 ) {
   let tick = 0; // counts callbacks
   let phase = 0; // next callback time

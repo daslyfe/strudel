@@ -9,8 +9,10 @@ const sendMessage = (type, payload) => {
     port.postMessage({ type, payload });
   });
 };
-
+let prevtime = 0;
 const sendTick = (phase, duration, tick, time) => {
+  console.log(time - prevtime);
+  prevtime = time;
   sendMessage('tick', { phase, duration, tick, time, cps, num_cycles_at_cps_change, num_ticks_since_cps_change });
   num_ticks_since_cps_change++;
 };
@@ -61,14 +63,14 @@ function createClock(
   callback, // called slightly before each cycle
   duration = 0.05, // duration of each cycle
   interval = 0.1, // interval between callbacks
-  overlap = 0.1, // overlap between callbacks
+  overlap, // overlap between callbacks
 ) {
   let tick = 0; // counts callbacks
   let phase = 0; // next callback time
   let precision = 10 ** 4; // used to round phase
   let minLatency = 0.01;
   const setDuration = (setter) => (duration = setter(duration));
-  overlap = overlap || interval / 2;
+  overlap = interval / 2;
   const onTick = () => {
     const t = getTime();
     const lookahead = t + interval + overlap; // the time window for this tick

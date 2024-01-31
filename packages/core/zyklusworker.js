@@ -14,7 +14,16 @@ const sendMessage = (type, payload) => {
 };
 
 const sendTick = ({ phase, duration, tick, time }) => {
-  sendMessage('tick', { phase, duration, tick, time, cps, num_cycles_at_cps_change, num_ticks_since_cps_change });
+  sendMessage('tick', {
+    phase,
+    duration,
+    tick,
+    time,
+    cps,
+    num_cycles_at_cps_change,
+    num_ticks_since_cps_change,
+    date: Date.now(),
+  });
   num_ticks_since_cps_change++;
 };
 

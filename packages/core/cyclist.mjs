@@ -34,12 +34,13 @@ export class Cyclist {
       console.log(time - prevtime);
       prevtime = time;
 
-      const { duration, phase, num_ticks_since_cps_change, num_cycles_at_cps_change, tick, cps } = payload;
-      if (this.cycle === 0 || tick === 0) {
-        console.log('here');
-        worker_time_diff = workertime - time;
+      const { duration, phase, num_ticks_since_cps_change, num_cycles_at_cps_change, tick, cps, date } = payload;
+      if (this.cycle === 0 || tick % 100 === 0) {
+        const date_diff = (Date.now() - date) / 1000;
+
+        worker_time_diff = workertime - time - date_diff;
         tick_at_first_tick = tick;
-        time_at_first_tick = time;
+        time_at_first_tick = time - date_diff;
         phase_at_first_tick = phase;
         deadlineatfirsttick = phase_at_first_tick - workertime;
       }
@@ -56,12 +57,12 @@ export class Cyclist {
       // const tickdeadline = phase - workertime;
       const tick_diff = tick - tick_at_first_tick;
       const tickdeadline = tick_diff * duration - (time - time_at_first_tick) + deadlineatfirsttick;
-
+      // const tickdeadline = phase - workertime;
       console.log({ tick, tickdeadline, tick_diff, duration });
       // const time_diff = time - time_at_first_tick;
 
       // const num_callbacks = time_diff / 0.1;
-      // const tickdeadline = num_callbacks % 1;
+
       // // console.log(time + num_callbacks % 1);
 
       // console.log(tickdeadline);

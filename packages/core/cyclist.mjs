@@ -26,13 +26,17 @@ export class Cyclist {
     let phase_at_first_tick = 0;
     let worker_time_diff = 0;
     let deadlineatfirsttick = 0;
-
+    let prevtime = this.getTime();
     const callback2 = (payload) => {
       const workertime = payload.time;
+
       const time = this.getTime();
+      console.log(time - prevtime);
+      prevtime = time;
 
       const { duration, phase, num_ticks_since_cps_change, num_cycles_at_cps_change, tick, cps } = payload;
-      if (this.cycle === 0) {
+      if (this.cycle === 0 || tick === 0) {
+        console.log('here');
         worker_time_diff = workertime - time;
         tick_at_first_tick = tick;
         time_at_first_tick = time;
@@ -51,8 +55,9 @@ export class Cyclist {
       // const tickdeadline = phase - phase_at_first_tick - (time - time_at_first_tick);
       // const tickdeadline = phase - workertime;
       const tick_diff = tick - tick_at_first_tick;
-      const tickdeadline = tick_diff * duration - time + 0.5;
-      console.log({ tickdeadline });
+      const tickdeadline = tick_diff * duration - (time - time_at_first_tick) + deadlineatfirsttick;
+
+      console.log({ tick, tickdeadline, tick_diff, duration });
       // const time_diff = time - time_at_first_tick;
 
       // const num_callbacks = time_diff / 0.1;

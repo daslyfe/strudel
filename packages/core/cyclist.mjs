@@ -21,22 +21,34 @@ export class Cyclist {
     this.onToggle = onToggle;
     this.latency = latency; // fixed trigger time offset
     this.worker_time_diff;
+
     this.cycle = 0;
+    let tick_at_first_tick = 0;
+    let time_at_first_tick = 0;
+    let phase_at_first_tick = 0;
 
     const callback2 = (payload) => {
       const workertime = payload.time;
       const time = this.getTime();
+      console.log({ time });
 
-      const { duration, phase, num_ticks_since_cps_change, num_cycles_at_cps_change, cps } = payload;
+      const { duration, phase, num_ticks_since_cps_change, num_cycles_at_cps_change, tick, cps } = payload;
       if (this.worker_time_diff == null) {
         this.worker_time_diff = workertime - time;
+        tick_at_first_tick = tick;
+        time_at_first_tick = time;
+        phase_at_first_tick = phase;
       }
+      // let d2 = (phase - phase_at_first_tick - (time - time_at_first_tick)) / (tick - tick_at_first_tick);
+
       this.cps = cps;
       const eventLength = duration * cps;
       const num_cycles_since_cps_change = num_ticks_since_cps_change * eventLength;
       const begin = num_cycles_at_cps_change + num_cycles_since_cps_change;
 
       const tickdeadline = phase - time - this.worker_time_diff; // time left until the phase is a whole number
+      // const tickdeadline = d2;
+      // console.log(tickdeadline, d2);
       const end = begin + eventLength;
 
       const lastTick = time + tickdeadline;

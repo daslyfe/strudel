@@ -5,7 +5,6 @@ const allPorts = [];
 let num_cycles_at_cps_change = 0;
 let num_ticks_since_cps_change = 0;
 let cps = 0.5;
-const interval = 0.1;
 
 const sendMessage = (type, payload) => {
   allPorts.forEach((port) => {
@@ -22,7 +21,6 @@ const sendTick = ({ phase, duration, tick, time }) => {
     cps,
     num_cycles_at_cps_change,
     num_ticks_since_cps_change,
-    date: Date.now(),
   });
   num_ticks_since_cps_change++;
 };
@@ -121,6 +119,5 @@ function createClock(
     clear();
   };
   const getPhase = () => phase;
-  // setCallback
   return { setDuration, start, stop, pause, duration, interval, getPhase, minLatency };
 }

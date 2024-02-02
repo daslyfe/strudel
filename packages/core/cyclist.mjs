@@ -7,7 +7,7 @@ This program is free software: you can redistribute it and/or modify it under th
 import { logger } from './logger.mjs';
 
 export class Cyclist {
-  constructor({ interval, onTrigger, onToggle, onError, getTime, latency = 0.1 }) {
+  constructor({ onTrigger, onToggle, onError, getTime, latency = 0.1 }) {
     this.started = false;
     this.cps = 0.5;
     this.lastTick = 0; // absolute time when last tick (clock callback) happened
@@ -23,6 +23,17 @@ export class Cyclist {
     this.cycle = 0;
     let worker_time_dif = 0;
 
+    let interval = 0.1;
+    let phase = 0; // time position
+    let overlap = 0.1; // overlap to account for interval errors
+    let minLatency = 0.01;
+    let duration = 0.05;
+    let precision = 10 ** 4;
+    let startTime;
+    let tick = 0;
+    let phase_at_first_tick = 0;
+    let numcallbacks = 0;
+
     const setTimeReference = (time, workertime) => {
       worker_time_dif = workertime - time;
     };
@@ -32,29 +43,60 @@ export class Cyclist {
     };
 
     const callback2 = (payload) => {
-      const workertime = payload.time;
-      const time = this.getTime();
-      const { duration, phase, num_ticks_since_cps_change, num_cycles_at_cps_change, cps } = payload;
-      if (this.cycle === 0) {
-        setTimeReference(time, workertime);
-      }
+      // const workertime = payload.time;
+      const t = this.getTime();
+      const { num_ticks_since_cps_change, num_cycles_at_cps_change, cps } = payload;
       this.cps = cps;
-      const eventLength = duration * cps;
-      const num_cycles_since_cps_change = num_ticks_since_cps_change * eventLength;
-      const begin = num_cycles_at_cps_change + num_cycles_since_cps_change;
-      let tickdeadline = getTickDeadline(phase, time);
-      let approximatedeadline = phase - workertime;
-      if (Math.abs(tickdeadline - approximatedeadline) > 0.015) {
-        setTimeReference(time, workertime);
-        tickdeadline = getTickDeadline(phase, time);
+      if (startTime == null || numcallbacks < 20) {
+        startTime = t;
+        tick = num_ticks_since_cps_change;
+        phase_at_first_tick = payload.phase - payload.time;
       }
-      const end = begin + eventLength;
 
-      const lastTick = time + tickdeadline;
-      const secondsSinceLastTick = time - lastTick - duration;
-      this.cycle = begin + secondsSinceLastTick * cps;
+      const process = () => {
+        let tickdeadline = phase - t;
+        const eventLength = duration * cps;
+        const num_cycles_since_cps_change = tick * eventLength;
+        const begin = num_cycles_at_cps_change + num_cycles_since_cps_change + phase_at_first_tick;
+        const end = begin + eventLength;
 
-      processHaps(begin, end, tickdeadline);
+        // console.log(tickdeadline, payload.phase - payload.time);
+        processHaps(begin, end, tickdeadline);
+      };
+
+      if (phase === 0) {
+        phase = t + minLatency;
+      }
+      const lookahead = t + interval + overlap;
+      while (phase < lookahead) {
+        phase = Math.round(phase * precision) / precision;
+        phase >= t && process();
+        phase < t && console.log('too late', phase);
+        phase += duration;
+        tick++;
+      }
+      numcallbacks++;
+      console.log({ tick });
+      // if (this.cycle === 0) {
+      //   setTimeReference(time, workertime);
+      // }
+      // this.cps = cps;
+      // const eventLength = duration * cps;
+      // const num_cycles_since_cps_change = num_ticks_since_cps_change * eventLength;
+      // const begin = num_cycles_at_cps_change + num_cycles_since_cps_change;
+      // let tickdeadline = getTickDeadline(phase, time);
+      // let approximatedeadline = phase - workertime;
+      // if (Math.abs(tickdeadline - approximatedeadline) > 0.015) {
+      //   setTimeReference(time, workertime);
+      //   tickdeadline = getTickDeadline(phase, time);
+      // }
+      // const end = begin + eventLength;
+
+      // const lastTick = time + tickdeadline;
+      // const secondsSinceLastTick = time - lastTick - duration;
+      // this.cycle = begin + secondsSinceLastTick * cps;
+
+      // processHaps(begin, end, tickdeadline);
     };
 
     const processHaps = (begin, end, tickdeadline) => {

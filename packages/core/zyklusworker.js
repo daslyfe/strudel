@@ -51,6 +51,7 @@ const processMessage = (message) => {
     case 'cpschange': {
       if (payload.cps !== cps) {
         cps = payload.cps;
+
         num_ticks_since_cps_change = 0;
       }
       break;
@@ -83,7 +84,7 @@ function createClock(
 ) {
   let duration = 0.05;
   let interval = 0.1;
-  let overlap = interval / 2;
+  let overlap = 0.1;
   let tick = 0; // counts callbacks
   let phase = 0; // next callback time
   let precision = 10 ** 4; // used to round phase

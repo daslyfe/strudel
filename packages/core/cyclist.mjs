@@ -57,7 +57,7 @@ export class Cyclist {
         let tickdeadline = phase - t;
         const eventLength = duration * cps;
         const num_cycles_since_cps_change = tick * eventLength;
-        const begin = num_cycles_at_cps_change + num_cycles_since_cps_change + phase_at_first_tick;
+        const begin = num_cycles_at_cps_change + num_cycles_since_cps_change;
         const end = begin + eventLength;
 
         // console.log(tickdeadline, payload.phase - payload.time);
@@ -76,7 +76,6 @@ export class Cyclist {
         tick++;
       }
       numcallbacks++;
-      console.log({ tick });
       // if (this.cycle === 0) {
       //   setTimeReference(time, workertime);
       // }

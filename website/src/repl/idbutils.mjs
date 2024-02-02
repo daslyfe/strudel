@@ -24,8 +24,8 @@ const clearIDB = () => {
 };
 
 // queries the DB, and registers the sounds so they can be played
-export const registerSamplesFromDB = (config = userSamplesDBConfig, onComplete = () => {}) => {
-  openDB(config, (objectStore) => {
+export const registerSamplesFromDB = async (config = userSamplesDBConfig, onComplete = () => {}) => {
+  await openDB(config, async (objectStore) => {
     let query = objectStore.getAll();
     query.onsuccess = (event) => {
       const soundFiles = event.target.result;
@@ -48,18 +48,21 @@ export const registerSamplesFromDB = (config = userSamplesDBConfig, onComplete =
           sounds.set(parentDirectory, soundPaths);
         });
 
-      sounds.forEach((soundPaths, key) => {
-        const value = Array.from(soundPaths);
-        registerSound(key, (t, hapValue, onended) => onTriggerSample(t, hapValue, onended, value), {
-          type: 'sample',
-          samples: value,
-          baseUrl: undefined,
-          prebake: false,
-          tag: undefined,
-        });
+      Promise.all(
+        Array.from(sounds.entries()).map(([key, soundPaths]) => {
+          const value = Array.from(soundPaths);
+          return registerSound(key, async (t, hapValue, onended) => onTriggerSample(t, hapValue, onended, value), {
+            type: 'sample',
+            samples: value,
+            baseUrl: undefined,
+            prebake: false,
+            tag: undefined,
+          });
+        }),
+      ).then(() => {
+        logger('imported sounds registered!', 'success');
+        onComplete();
       });
-      logger('imported sounds registered!', 'success');
-      onComplete();
     };
   });
 };
@@ -75,7 +78,7 @@ async function bufferToDataUrl(buf) {
   });
 }
 //open db and initialize it if necessary
-const openDB = (config, onOpened) => {
+const openDB = async (config, onOpened) => {
   const { dbName, version, table, columns } = config;
   if (typeof window === 'undefined') {
     return;

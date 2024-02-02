@@ -65,7 +65,7 @@ export const getSampleBufferSource = async (s, n, note, speed, freq, bank, resol
   return bufferSource;
 };
 
-export const loadBuffer = (url, ac, s, n = 0) => {
+export const loadBuffer = async (url, ac, s, n = 0) => {
   const label = s ? `sound "${s}:${n}"` : 'sample';
   url = url.replace('#', '%23');
   if (!loadCache[url]) {
@@ -78,9 +78,10 @@ export const loadBuffer = (url, ac, s, n = 0) => {
         const size = humanFileSize(res.byteLength);
         // const downSpeed = humanFileSize(res.byteLength / took);
         logger(`[sampler] load ${label}... done! loaded ${size} in ${took}ms`, 'loaded-sample', { url });
-        const decoded = await ac.decodeAudioData(res);
-        bufferCache[url] = decoded;
-        return decoded;
+        return ac.decodeAudioData(res).then((decoded) => {
+          bufferCache[url] = decoded;
+          return decoded;
+        });
       });
   }
   return loadCache[url];
@@ -214,7 +215,7 @@ export const samples = async (sampleMap, baseUrl = sampleMap._base || '', option
   processSampleMap(
     sampleMap,
     (key, value) =>
-      registerSound(key, (t, hapValue, onended) => onTriggerSample(t, hapValue, onended, value), {
+      registerSound(key, async (t, hapValue, onended) => onTriggerSample(t, hapValue, onended, value), {
         type: 'sample',
         samples: value,
         baseUrl,

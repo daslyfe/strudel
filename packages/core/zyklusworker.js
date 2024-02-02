@@ -30,6 +30,21 @@ const sendTick = ({ phase, duration, tick, time }) => {
 let clock = createClock(sendTick);
 let started = false;
 
+const startClock = () => {
+  if (started) {
+    return;
+  }
+  clock.start();
+  started = true;
+};
+const stopClock = () => {
+  if (!started) {
+    return;
+  }
+  clock.stop();
+  started = false;
+};
+
 const numClientsConnected = () => allPorts.length;
 const processMessage = (message) => {
   const { type, payload } = message;
@@ -44,12 +59,10 @@ const processMessage = (message) => {
     }
     case 'toggle': {
       if (payload.started && !started) {
-        started = true;
-        clock.start();
+        startClock();
         //dont stop the clock if others are using it...
       } else if (numClientsConnected() === 1) {
-        started = false;
-        clock.stop();
+        stopClock();
       }
       break;
     }
@@ -57,7 +70,7 @@ const processMessage = (message) => {
 };
 
 self.onconnect = function (e) {
-  clock.start();
+  startClock();
   // the incoming port
   const port = e.ports[0];
   allPorts.push(port);
@@ -66,44 +79,19 @@ self.onconnect = function (e) {
   });
   port.start(); // Required when using addEventListener. Otherwise called implicitly by onmessage setter.
 };
-// let prevtime = getTime();
-// function createClock2(callback, interval) {
-//   let tick = 0; // counts callbacks
-
-//   const onTick = () => {
-//     let time = getTime();
-//     prevtime = time;
-//     callback({ tick, duration: interval, phase: 0, time: 0 });
-//     tick++;
-//   };
-//   let intervalID;
-//   const start = () => {
-//     clear(); // just in case start was called more than once
-//     onTick();
-//     intervalID = setInterval(onTick, interval * 1000);
-//   };
-//   const clear = () => intervalID !== undefined && clearInterval(intervalID);
-//   const pause = () => clear();
-//   const stop = () => {
-//     tick = 0;
-//     clear();
-//   };
-
-//   return { start, stop, pause };
-// }
 
 function createClock(
   callback, // called slightly before each cycle
-  duration = 0.05, // duration of each cycle
-  interval = 0.1, // interval between callbacks
-  overlap, // overlap between callbacks
 ) {
+  let duration = 0.05;
+  let interval = 0.1;
+  let overlap = interval / 2;
   let tick = 0; // counts callbacks
   let phase = 0; // next callback time
   let precision = 10 ** 4; // used to round phase
   let minLatency = 0.01;
   const setDuration = (setter) => (duration = setter(duration));
-  overlap = interval / 2;
+
   const onTick = () => {
     const t = getTime();
     const lookahead = t + interval + overlap; // the time window for this tick

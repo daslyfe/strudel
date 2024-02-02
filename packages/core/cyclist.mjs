@@ -26,16 +26,30 @@ export class Cyclist {
     let phase_at_first_tick = 0;
     let deadlineatfirsttick = 0;
     let num_callbacks = 0;
+    let worker_time_dif = 0;
+
+    let prevtime = getTime();
+
+    const setTimeReferences = ({ tick, time, phase, workertime, date }) => {
+      // const now = date.now();
+      // const message_lag = (date - now) / 1000;
+      tick_at_first_tick = tick;
+      time_at_first_tick = time;
+      phase_at_first_tick = phase;
+      deadlineatfirsttick = phase_at_first_tick - workertime;
+      worker_time_dif = workertime - time;
+    };
     const callback2 = (payload) => {
       const workertime = payload.time;
       const time = this.getTime();
+
       const { duration, phase, num_ticks_since_cps_change, num_cycles_at_cps_change, tick, cps, date } = payload;
-      if (num_callbacks === 20 || num_callbacks === 0) {
-        const date_diff = (Date.now() - date) / 1000;
-        tick_at_first_tick = tick;
-        time_at_first_tick = time - date_diff;
-        phase_at_first_tick = phase;
-        deadlineatfirsttick = phase_at_first_tick - workertime;
+      // console.log(time, time - prevtime);
+      prevtime = time;
+
+      if (num_callbacks < 1) {
+        setTimeReferences({ tick, time, phase, workertime, date });
+        // const date_diff = 0;
       }
 
       this.cps = cps;
@@ -44,8 +58,16 @@ export class Cyclist {
       const begin = num_cycles_at_cps_change + num_cycles_since_cps_change;
 
       const tick_diff = tick - tick_at_first_tick;
-      let tickdeadline = tick_diff * duration - (time - time_at_first_tick) + deadlineatfirsttick;
+      let tickdeadline = phase - time - worker_time_dif;
+      let approximatedeadline = phase - workertime;
+      if (Math.abs(tickdeadline - approximatedeadline) > 0.015) {
+        setTimeReferences({ tick, time, phase, workertime, date });
+        tickdeadline = phase - time - worker_time_dif;
+      }
 
+      // let tickdeadline = tick_diff * duration - (time - time_at_first_tick) + deadlineatfirsttick + latency;
+
+      console.log({ tickdeadline, d2: phase - workertime });
       const end = begin + eventLength;
 
       const lastTick = time + tickdeadline;

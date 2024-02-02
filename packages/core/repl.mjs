@@ -79,7 +79,7 @@ export function repl({
   const stop = () => scheduler.stop();
   const start = () => scheduler.start();
   const pause = () => scheduler.pause();
-  const toggle = () => scheduler.toggle();
+  const toggle = () => scheduler.onToggle();
   const setCps = (cps) => scheduler.setCps(cps);
   const setCpm = (cpm) => scheduler.setCps(cpm / 60);
   const setCycle = (cycle) => {

@@ -253,7 +253,10 @@ export class StrudelMirror {
     }
   }
   async evaluate() {
+    console.log(this.prebaked);
+
     this.flash();
+    await this.prebaked;
     await this.repl.evaluate(this.code);
   }
 

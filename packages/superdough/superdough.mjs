@@ -16,7 +16,7 @@ import { loadBuffer } from './sampler.mjs';
 
 export const soundMap = map();
 
-export function registerSound(key, onTrigger, data = {}) {
+export async function registerSound(key, onTrigger, data = {}) {
   soundMap.setKey(key, { onTrigger, data });
 }
 

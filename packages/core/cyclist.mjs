@@ -46,6 +46,7 @@ export class Cyclist {
         const new_dif = (average_time_diff =
           Math.round(((average_time_diff * weight + time_dif * w) / (weight + w)) * precision) / precision);
 
+        console.log(new_dif - average_time_diff);
         average_time_diff = new_dif;
         //set the time dif used to schedule events to the average if it has drifted too much
         // if (Math.abs(worker_time_dif - average_time_diff) > 0.002) {

@@ -22,65 +22,39 @@ export class Cyclist {
 
     this.cycle = 0;
     let worker_time_dif = 0;
-    let precision = 10 ** 4;
-    this.begin = 0;
-    this.prevtime = getTime();
-    let time_at_cps_change = 0;
 
-    const getInterval = (num_cycles_at_cps_change, time_at_cps_change, time) => {
-      return num_cycles_at_cps_change + (time - time_at_cps_change) * this.cps;
+    const setTimeReference = (time, workertime) => {
+      worker_time_dif = workertime - time;
+    };
+
+    const getTickDeadline = (phase, time) => {
+      return phase - time - worker_time_dif;
     };
 
     const callback2 = (payload) => {
       const workertime = payload.time;
       const time = this.getTime();
       const { duration, phase, num_ticks_since_cps_change, num_cycles_at_cps_change, cps } = payload;
-      worker_time_dif - workertime - time;
-      if (this.begin === 0) {
-        this.begin = getInterval(num_cycles_at_cps_change, time_at_cps_change, time);
-        time_at_cps_change = payload.time_at_cps_change - worker_time_dif;
-        return;
+      if (this.cycle === 0) {
+        setTimeReference(time, workertime);
       }
-
-      // getInterval(num_cycles_at_cps_change, time_at_cps_change, prevtime);
-      // console.log(begin);
-      let end = getInterval(num_cycles_at_cps_change, time_at_cps_change, time);
-
-      // let end = num_cycles_at_cps_change + (time - time_at_cps_change) * cps;
-
-      processHaps(this.begin, end, 0);
-      console.log({ begin: this.begin, end });
-      time_at_cps_change = payload.time_at_cps_change - worker_time_dif;
-      this.begin = end;
       this.cps = cps;
-      this.cycle = end;
-      this.prevtime = time;
+      const eventLength = duration * cps;
+      const num_cycles_since_cps_change = num_ticks_since_cps_change * eventLength;
+      const begin = num_cycles_at_cps_change + num_cycles_since_cps_change;
+      let tickdeadline = getTickDeadline(phase, time);
+      let approximatedeadline = phase - workertime;
+      if (Math.abs(tickdeadline - approximatedeadline) > 0.015) {
+        setTimeReference(time, workertime);
+        tickdeadline = getTickDeadline(phase, time);
+      }
+      const end = begin + eventLength;
 
-      // if (this.cycle === 0) {
-      //   setTimeReference(time, workertime);
-      // }
+      const lastTick = time + tickdeadline;
+      const secondsSinceLastTick = time - lastTick - duration;
+      this.cycle = begin + secondsSinceLastTick * cps;
 
-      // // console.log(workertime - time);
-      // this.cps = cps;
-      // const eventLength = duration * cps;
-      // const num_cycles_since_cps_change = (time - time_at_cps_change) / cps;
-
-      // const num_cycles_since_cps_change2 = num_ticks_since_cps_change * eventLength;
-      // console.log({ num_cycles_at_cps_change, num_cycles_since_cps_change, num_cycles_since_cps_change2 });
-      // const begin = num_cycles_at_cps_change + num_cycles_since_cps_change2;
-      // let tickdeadline = getTickDeadline(phase, time);
-      // let approximatedeadline = phase - workertime;
-      // if (Math.abs(tickdeadline - approximatedeadline) > 0.015) {
-      //   setTimeReference(time, workertime);
-      //   tickdeadline = getTickDeadline(phase, time);
-      // }
-      // const end = begin + eventLength;
-
-      // const lastTick = time + tickdeadline;
-      // const secondsSinceLastTick = time - lastTick - duration;
-      // this.cycle = begin + secondsSinceLastTick * cps;
-
-      // processHaps(begin, end, tickdeadline);
+      processHaps(begin, end, tickdeadline);
     };
 
     const processHaps = (begin, end, tickdeadline) => {
@@ -90,7 +64,6 @@ export class Cyclist {
         if (hap.part.begin.equals(hap.whole.begin)) {
           const deadline = (hap.whole.begin - begin) / this.cps + tickdeadline + latency;
           const duration = hap.duration / this.cps;
-
           onTrigger?.(hap, deadline, duration, this.cps);
         }
       });
@@ -104,9 +77,6 @@ export class Cyclist {
 
       switch (type) {
         case 'tick': {
-          if (this.started === false) {
-            return;
-          }
           this.time_at_last_tick_message = this.getTime();
           callback2(payload);
           // callback2(phase, duration, tick, time);
@@ -119,7 +89,7 @@ export class Cyclist {
   }
 
   now() {
-    const gap = (this.getTime() - this.prevtime) * this.cps;
+    const gap = (this.getTime() - this.time_at_last_tick_message) * this.cps;
     return this.cycle + gap;
   }
   setCps(cps = 1) {
@@ -139,7 +109,6 @@ export class Cyclist {
   }
   stop() {
     logger('[cyclist] stop');
-    this.begin = 0;
     this.setStarted(false);
   }
   setPattern(pat, autostart = false) {

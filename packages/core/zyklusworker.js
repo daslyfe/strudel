@@ -4,7 +4,9 @@ function getTime() {
 const allPorts = [];
 let num_cycles_at_cps_change = 0;
 let num_ticks_since_cps_change = 0;
+let time_at_cps_change = 0;
 let cps = 0.5;
+let duration = 0.05;
 
 const sendMessage = (type, payload) => {
   allPorts.forEach((port) => {
@@ -21,8 +23,8 @@ const sendTick = ({ phase, duration, tick, time }) => {
     cps,
     num_cycles_at_cps_change,
     num_ticks_since_cps_change,
+    time_at_cps_change,
   });
-  num_ticks_since_cps_change++;
 };
 
 let clock = createClock(sendTick);
@@ -33,6 +35,7 @@ const startClock = () => {
     return;
   }
   clock.start();
+  time_at_cps_change = getTime();
   started = true;
 };
 const stopClock = () => {
@@ -50,15 +53,21 @@ const processMessage = (message) => {
   switch (type) {
     case 'cpschange': {
       if (payload.cps !== cps) {
-        cps = payload.cps;
+        const eventLength = duration * cps;
+        num_cycles_at_cps_change = (getTime() - time_at_cps_change) * cps;
+        time_at_cps_change = getTime();
+
+        // num_cycles_at_cps_change = num_ticks_since_cps_change * eventLength;
 
         num_ticks_since_cps_change = 0;
+        cps = payload.cps;
       }
       break;
     }
     case 'toggle': {
-      if (payload.started && !started) {
+      if (payload.started) {
         startClock();
+
         //dont stop the clock if others are using it...
       } else if (numClientsConnected() === 1) {
         stopClock();
@@ -69,7 +78,7 @@ const processMessage = (message) => {
 };
 
 self.onconnect = function (e) {
-  startClock();
+  //   startClock();
   // the incoming port
   const port = e.ports[0];
   allPorts.push(port);
@@ -82,7 +91,6 @@ self.onconnect = function (e) {
 function createClock(
   callback, // called slightly before each cycle
 ) {
-  let duration = 0.05;
   let interval = 0.1;
   let overlap = 0.1;
   let tick = 0; // counts callbacks
@@ -97,14 +105,16 @@ function createClock(
     if (phase === 0) {
       phase = t + minLatency;
     }
+    callback({ phase, duration, tick, time: t });
     // callback as long as we're inside the lookahead
-    while (phase < lookahead) {
-      phase = Math.round(phase * precision) / precision;
-      phase >= t && callback({ phase, duration, tick, time: t });
-      phase < t && console.log('TOO LATE', phase); // what if latency is added from outside?
-      phase += duration; // increment phase by duration
-      tick++;
-    }
+    // while (phase < lookahead) {
+    //   phase = Math.round(phase * precision) / precision;
+    //   phase >= t && callback({ phase, duration, tick, time: t });
+    //   phase < t && console.log('TOO LATE', phase); // what if latency is added from outside?
+    //   phase += duration; // increment phase by duration
+    //   tick++;
+    //   num_ticks_since_cps_change++;
+    // }
   };
   let intervalID;
   const start = () => {

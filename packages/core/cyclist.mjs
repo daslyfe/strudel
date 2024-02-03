@@ -22,9 +22,11 @@ export class Cyclist {
 
     this.cycle = 0;
     let worker_time_dif = 0;
+    let prev_worker_time_diff;
 
     const setTimeReference = (time, workertime) => {
       worker_time_dif = workertime - time;
+      prev_worker_time_diff = worker_time_dif - time;
     };
 
     const getTickDeadline = (phase, time) => {
@@ -43,11 +45,18 @@ export class Cyclist {
       const num_cycles_since_cps_change = num_ticks_since_cps_change * eventLength;
       const begin = num_cycles_at_cps_change + num_cycles_since_cps_change;
       let tickdeadline = getTickDeadline(phase, time);
-      let approximatedeadline = phase - workertime;
-      if (Math.abs(tickdeadline - approximatedeadline) > 0.015) {
+      let curr_worker_time_diff = workertime - time;
+
+      // console.log(Math.abs(approximatedeadline - prev_approximate_tick_deadline));
+      if (
+        Math.abs(worker_time_dif - curr_worker_time_diff) > 0.015 &&
+        Math.abs(prev_worker_time_diff - curr_worker_time_diff) < 0.01
+      ) {
+        console.log('hereee');
         setTimeReference(time, workertime);
         tickdeadline = getTickDeadline(phase, time);
       }
+      prev_worker_time_diff = curr_worker_time_diff;
       const end = begin + eventLength;
 
       const lastTick = time + tickdeadline;

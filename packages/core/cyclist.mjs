@@ -22,7 +22,6 @@ export class Cyclist {
 
     this.cycle = 0;
     let worker_time_dif = 0;
-    let average_time_diff = 0; // weighted average of time difference between worker time and audio context time
     let weight = 0; // the amount of weight that is applied to the current average when averaging a new time dif
     const maxWeight = 400;
     const precision = 10 ** 3;
@@ -33,28 +32,13 @@ export class Cyclist {
     // in order to schedule events consistently.
     const setTimeReference = (time, workertime) => {
       const time_dif = workertime - time;
-
       if (worker_time_dif === 0) {
         worker_time_dif = time_dif;
-        average_time_diff = worker_time_dif;
       } else {
-        // if (weight === maxWeight && Math.abs(time_dif - average_time_diff) > 0.01) {
-        //   console.log('reject');
-        //   return;
-        // }
         let w = 1;
-        const new_dif = (average_time_diff =
-          Math.round(((average_time_diff * weight + time_dif * w) / (weight + w)) * precision) / precision);
-
-        console.log(new_dif - average_time_diff);
-        average_time_diff = new_dif;
-        //set the time dif used to schedule events to the average if it has drifted too much
-        // if (Math.abs(worker_time_dif - average_time_diff) > 0.002) {
-        // console.log('here');
-        // weight = Math.min(10, weight);
-        // average_time_diff = (average_time_diff * 10 + time_dif) / 11;
-        worker_time_dif = average_time_diff;
-        // }
+        const new_dif = Math.round(((worker_time_dif * weight + time_dif * w) / (weight + w)) * precision) / precision;
+        console.log({ worker_time_dif }, new_dif - worker_time_dif);
+        worker_time_dif = new_dif;
       }
     };
 

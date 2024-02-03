@@ -22,11 +22,15 @@ export class Cyclist {
 
     this.cycle = 0;
     let worker_time_dif = 0;
-    let prev_worker_time_diff;
 
     const setTimeReference = (time, workertime) => {
-      worker_time_dif = workertime - time;
-      prev_worker_time_diff = worker_time_dif - time;
+      const weight = 100;
+      const time_dif = workertime - time;
+      if (worker_time_dif === 0) {
+        worker_time_dif = time_dif;
+      } else {
+        worker_time_dif = (worker_time_dif * weight + time_dif) / (weight + 1);
+      }
     };
 
     const getTickDeadline = (phase, time) => {
@@ -37,26 +41,30 @@ export class Cyclist {
       const workertime = payload.time;
       const time = this.getTime();
       const { duration, phase, num_ticks_since_cps_change, num_cycles_at_cps_change, cps } = payload;
-      if (this.cycle === 0) {
-        setTimeReference(time, workertime);
-      }
+      // if (this.cycle === 0) {
+      //   setTimeReference(time, workertime);
+      // }
+      setTimeReference(time, workertime);
       this.cps = cps;
+
+      if (this.started === false) {
+        return;
+      }
       const eventLength = duration * cps;
       const num_cycles_since_cps_change = num_ticks_since_cps_change * eventLength;
       const begin = num_cycles_at_cps_change + num_cycles_since_cps_change;
       let tickdeadline = getTickDeadline(phase, time);
-      let curr_worker_time_diff = workertime - time;
 
       // console.log(Math.abs(approximatedeadline - prev_approximate_tick_deadline));
-      if (
-        Math.abs(worker_time_dif - curr_worker_time_diff) > 0.015 &&
-        Math.abs(prev_worker_time_diff - curr_worker_time_diff) < 0.01
-      ) {
-        console.log('hereee');
-        setTimeReference(time, workertime);
-        tickdeadline = getTickDeadline(phase, time);
-      }
-      prev_worker_time_diff = curr_worker_time_diff;
+      // if (
+      //   Math.abs(worker_time_dif - curr_worker_time_diff) > 0.015 &&
+      //   Math.abs(prev_worker_time_diff - curr_worker_time_diff) < 0.01
+      // ) {
+      //   console.log('hereee');
+      //   setTimeReference(time, workertime);
+      //   tickdeadline = getTickDeadline(phase, time);
+      // }
+
       const end = begin + eventLength;
 
       const lastTick = time + tickdeadline;

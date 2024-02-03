@@ -5,7 +5,7 @@ const allPorts = [];
 let num_cycles_at_cps_change = 0;
 let num_ticks_since_cps_change = 0;
 let cps = 0.5;
-let duration = 0.05;
+let duration = 0.1;
 
 const sendMessage = (type, payload) => {
   allPorts.forEach((port) => {

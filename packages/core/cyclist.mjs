@@ -22,14 +22,38 @@ export class Cyclist {
 
     this.cycle = 0;
     let worker_time_dif = 0;
+    let average_time_diff = 0; // weighted average of time difference between worker time and audio context time
+    let weight = 0; // the amount of weight that is applied to the current average when averaging a new time dif
+    const maxWeight = 400;
+    const precision = 10 ** 3;
 
+    // the performance.now clock of the worker and the audio context clock can drift apart over time
+    //aditionally, the message time of the worker pinging the callback to process haps can be inconsistent
+    // we need to keep a rolling weighted average of the time difference between the worker clock and audio context clock
+    // in order to schedule events consistently.
     const setTimeReference = (time, workertime) => {
-      const weight = 100;
       const time_dif = workertime - time;
+
       if (worker_time_dif === 0) {
         worker_time_dif = time_dif;
+        average_time_diff = worker_time_dif;
       } else {
-        worker_time_dif = (worker_time_dif * weight + time_dif) / (weight + 1);
+        // if (weight === maxWeight && Math.abs(time_dif - average_time_diff) > 0.01) {
+        //   console.log('reject');
+        //   return;
+        // }
+        let w = 1;
+        const new_dif = (average_time_diff =
+          Math.round(((average_time_diff * weight + time_dif * w) / (weight + w)) * precision) / precision);
+
+        average_time_diff = new_dif;
+        //set the time dif used to schedule events to the average if it has drifted too much
+        // if (Math.abs(worker_time_dif - average_time_diff) > 0.002) {
+        // console.log('here');
+        // weight = Math.min(10, weight);
+        // average_time_diff = (average_time_diff * 10 + time_dif) / 11;
+        worker_time_dif = average_time_diff;
+        // }
       }
     };
 
@@ -37,44 +61,32 @@ export class Cyclist {
       return phase - time - worker_time_dif;
     };
 
-    const callback2 = (payload) => {
+    const tickCallback = (payload) => {
       const workertime = payload.time;
       const time = this.getTime();
       const { duration, phase, num_ticks_since_cps_change, num_cycles_at_cps_change, cps } = payload;
-      // if (this.cycle === 0) {
-      //   setTimeReference(time, workertime);
-      // }
       setTimeReference(time, workertime);
       this.cps = cps;
 
-      if (this.started === false) {
-        return;
-      }
       const eventLength = duration * cps;
       const num_cycles_since_cps_change = num_ticks_since_cps_change * eventLength;
       const begin = num_cycles_at_cps_change + num_cycles_since_cps_change;
       let tickdeadline = getTickDeadline(phase, time);
-
-      // console.log(Math.abs(approximatedeadline - prev_approximate_tick_deadline));
-      // if (
-      //   Math.abs(worker_time_dif - curr_worker_time_diff) > 0.015 &&
-      //   Math.abs(prev_worker_time_diff - curr_worker_time_diff) < 0.01
-      // ) {
-      //   console.log('hereee');
-      //   setTimeReference(time, workertime);
-      //   tickdeadline = getTickDeadline(phase, time);
-      // }
-
       const end = begin + eventLength;
 
       const lastTick = time + tickdeadline;
       const secondsSinceLastTick = time - lastTick - duration;
       this.cycle = begin + secondsSinceLastTick * cps;
 
+      weight = Math.min(weight + 1, maxWeight);
       processHaps(begin, end, tickdeadline);
+      this.time_at_last_tick_message = this.getTime();
     };
 
     const processHaps = (begin, end, tickdeadline) => {
+      if (this.started === false) {
+        return;
+      }
       const haps = this.pattern.queryArc(begin, end, { _cps: this.cps });
 
       haps.forEach((hap) => {
@@ -94,9 +106,7 @@ export class Cyclist {
 
       switch (type) {
         case 'tick': {
-          this.time_at_last_tick_message = this.getTime();
-          callback2(payload);
-          // callback2(phase, duration, tick, time);
+          tickCallback(payload);
         }
       }
     });

@@ -13,11 +13,11 @@ const sendMessage = (type, payload) => {
   });
 };
 
-const sendTick = ({ phase, duration, tick, time }) => {
+const sendTick = ({ phase, duration, time }) => {
+  console.log({ num_ticks_since_cps_change });
   sendMessage('tick', {
     phase,
     duration,
-    tick,
     time,
     cps,
     num_cycles_at_cps_change,
@@ -84,7 +84,6 @@ function createClock(
 ) {
   let interval = 0.1;
   let overlap = interval / 2;
-  let tick = 0; // counts callbacks
   let phase = 0; // next callback time
   let precision = 10 ** 4; // used to round phase
   let minLatency = 0.01;
@@ -99,10 +98,9 @@ function createClock(
     // callback as long as we're inside the lookahead
     while (phase < lookahead) {
       phase = Math.round(phase * precision) / precision;
-      phase >= t && callback({ phase, duration, tick, time: t });
+      phase >= t && callback({ phase, duration, time: t });
       phase < t && console.log('TOO LATE', phase); // what if latency is added from outside?
       phase += duration; // increment phase by duration
-      tick++;
     }
   };
   let intervalID;
@@ -114,8 +112,9 @@ function createClock(
   const clear = () => intervalID !== undefined && clearInterval(intervalID);
   const pause = () => clear();
   const stop = () => {
-    tick = 0;
     phase = 0;
+    num_cycles_at_cps_change = 0;
+    num_ticks_since_cps_change = 0;
     clear();
   };
   const getPhase = () => phase;

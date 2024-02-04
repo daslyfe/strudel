@@ -7,27 +7,26 @@ This program is free software: you can redistribute it and/or modify it under th
 import { logger } from './logger.mjs';
 
 export class Cyclist {
-  constructor({ interval, onTrigger, onToggle, onError, getTime, latency = 0.1 }) {
+  constructor({ onTrigger, onToggle, getTime, latency = 0.1 }) {
     this.started = false;
     this.cps = 0.5;
     this.lastTick = 0; // absolute time when last tick (clock callback) happened
-    this.lastBegin = 0; // query begin of last tick
-    this.lastEnd = 0; // query end of last tick
     this.getTime = getTime; // get absolute time
-    this.worker = new SharedWorker(new URL('./zyklusworker.js', import.meta.url));
-    this.worker.port.start();
+
     this.num_cycles_at_cps_change = 0;
     this.onToggle = onToggle;
     this.latency = latency; // fixed trigger time offset
-
     this.cycle = 0;
-    let worker_time_dif = 0;
+
+    this.worker = new SharedWorker(new URL('./zyklusworker.js', import.meta.url));
+    this.worker.port.start();
+    let worker_time_dif = 0; // time difference between audio context clock and worker clock
     let weight = 0; // the amount of weight that is applied to the current average when averaging a new time dif
     const maxWeight = 400;
-    const precision = 10 ** 3;
+    const precision = 10 ** 3; //round off time diff to prevent accumulating outliers
 
     // the performance.now clock of the worker and the audio context clock can drift apart over time
-    //aditionally, the message time of the worker pinging the callback to process haps can be inconsistent
+    //aditionally, the message time of the worker pinging the callback to process haps can be inconsistent.
     // we need to keep a rolling weighted average of the time difference between the worker clock and audio context clock
     // in order to schedule events consistently.
     const setTimeReference = (time, workertime) => {
@@ -35,9 +34,13 @@ export class Cyclist {
       if (worker_time_dif === 0) {
         worker_time_dif = time_dif;
       } else {
-        let w = 1;
+        const w = 1; //weight of new time diff;
         const new_dif = Math.round(((worker_time_dif * weight + time_dif * w) / (weight + w)) * precision) / precision;
-        console.log({ worker_time_dif }, new_dif - worker_time_dif);
+
+        if (new_dif != worker_time_dif) {
+          // reset the weight so the clock recovers faster from an audio context freeze/dropout if it happens
+          weight = 4;
+        }
         worker_time_dif = new_dif;
       }
     };
@@ -53,16 +56,19 @@ export class Cyclist {
       setTimeReference(time, workertime);
       this.cps = cps;
 
+      //calculate begin and end
       const eventLength = duration * cps;
       const num_cycles_since_cps_change = num_ticks_since_cps_change * eventLength;
       const begin = num_cycles_at_cps_change + num_cycles_since_cps_change;
-      let tickdeadline = getTickDeadline(phase, time);
+      const tickdeadline = getTickDeadline(phase, time);
       const end = begin + eventLength;
 
+      //calculate current cycle
       const lastTick = time + tickdeadline;
       const secondsSinceLastTick = time - lastTick - duration;
       this.cycle = begin + secondsSinceLastTick * cps;
 
+      //set the weight of average time diff and processs haps
       weight = Math.min(weight + 1, maxWeight);
       processHaps(begin, end, tickdeadline);
       this.time_at_last_tick_message = this.getTime();
@@ -83,6 +89,7 @@ export class Cyclist {
       });
     };
 
+    // receive messages from worker clock and process them
     this.worker.port.addEventListener('message', (message) => {
       if (!this.started) {
         return;

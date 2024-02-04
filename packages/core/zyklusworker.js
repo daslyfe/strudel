@@ -1,11 +1,12 @@
-function getTime() {
-  return performance.now() / 1000;
+function getTime(precision) {
+  const seconds = performance.now() / 1000;
+  return Math.round(seconds * precision) / precision;
 }
 const allPorts = [];
 let num_cycles_at_cps_change = 0;
 let num_ticks_since_cps_change = 0;
 let cps = 0.5;
-let duration = 0.1;
+const duration = 0.1;
 
 const sendMessage = (type, payload) => {
   allPorts.forEach((port) => {
@@ -14,7 +15,6 @@ const sendMessage = (type, payload) => {
 };
 
 const sendTick = ({ phase, duration, time }) => {
-  console.log({ num_ticks_since_cps_change });
   sendMessage('tick', {
     phase,
     duration,
@@ -26,7 +26,7 @@ const sendTick = ({ phase, duration, time }) => {
   num_ticks_since_cps_change++;
 };
 
-let clock = createClock(sendTick);
+const clock = createClock(sendTick, duration);
 let started = false;
 
 const startClock = () => {
@@ -37,11 +37,18 @@ const startClock = () => {
   started = true;
 };
 const stopClock = () => {
-  if (!started) {
+  //dont stop the clock if mutliple instances are using it...
+  if (!started || numClientsConnected() > 1) {
     return;
   }
   clock.stop();
+  setCycle(0);
   started = false;
+};
+
+const setCycle = (cycle) => {
+  num_ticks_since_cps_change = 0;
+  num_cycles_at_cps_change = cycle;
 };
 
 const numClientsConnected = () => allPorts.length;
@@ -57,11 +64,14 @@ const processMessage = (message) => {
       }
       break;
     }
+    case 'setcycle': {
+      setCycle(payload.cycle);
+      break;
+    }
     case 'toggle': {
       if (payload.started) {
         startClock();
-        //dont stop the clock if others are using it...
-      } else if (numClientsConnected() === 1) {
+      } else {
         stopClock();
       }
       break;
@@ -81,16 +91,16 @@ self.onconnect = function (e) {
 
 function createClock(
   callback, // called slightly before each cycle
+  duration,
 ) {
-  let interval = 0.1;
-  let overlap = interval / 2;
+  const interval = 0.1;
+  const overlap = interval / 2;
+  const precision = 10 ** 4; // used to round phase
+  const minLatency = 0.01;
   let phase = 0; // next callback time
-  let precision = 10 ** 4; // used to round phase
-  let minLatency = 0.01;
-  const setDuration = (setter) => (duration = setter(duration));
 
   const onTick = () => {
-    const t = getTime();
+    const t = getTime(precision);
     const lookahead = t + interval + overlap; // the time window for this tick
     if (phase === 0) {
       phase = t + minLatency;
@@ -110,13 +120,10 @@ function createClock(
     intervalID = setInterval(onTick, interval * 1000);
   };
   const clear = () => intervalID !== undefined && clearInterval(intervalID);
-  const pause = () => clear();
   const stop = () => {
     phase = 0;
-    num_cycles_at_cps_change = 0;
-    num_ticks_since_cps_change = 0;
     clear();
   };
-  const getPhase = () => phase;
-  return { setDuration, start, stop, pause, duration, interval, getPhase, minLatency };
+
+  return { start, stop };
 }

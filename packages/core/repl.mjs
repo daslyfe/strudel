@@ -39,9 +39,7 @@ export function repl({
   };
 
   const scheduler = new Cyclist({
-    interval,
     onTrigger: getTrigger({ defaultOutput, getTime }),
-    onError: onSchedulerError,
     getTime,
     onToggle: (started) => {
       updateState({ started });

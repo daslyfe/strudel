@@ -7,7 +7,7 @@ This program is free software: you can redistribute it and/or modify it under th
 import { logger } from './logger.mjs';
 
 export class Cyclist {
-  constructor({ onTrigger, onToggle, getTime, latency = 0.1 }) {
+  constructor({ onTrigger, onToggle, getTime }) {
     this.started = false;
     this.cps = 0.5;
     this.lastTick = 0; // absolute time when last tick (clock callback) happened
@@ -15,7 +15,7 @@ export class Cyclist {
 
     this.num_cycles_at_cps_change = 0;
     this.onToggle = onToggle;
-    this.latency = latency; // fixed trigger time offset
+    this.latency = 0.1; // fixed trigger time offset
     this.cycle = 0;
 
     this.worker = new SharedWorker(new URL('./zyklusworker.js', import.meta.url));
@@ -82,7 +82,7 @@ export class Cyclist {
 
       haps.forEach((hap) => {
         if (hap.part.begin.equals(hap.whole.begin)) {
-          const deadline = (hap.whole.begin - begin) / this.cps + tickdeadline + latency;
+          const deadline = (hap.whole.begin - begin) / this.cps + tickdeadline + this.latency;
           const duration = hap.duration / this.cps;
           onTrigger?.(hap, deadline, duration, this.cps);
         }

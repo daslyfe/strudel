@@ -4,12 +4,9 @@ import { logger } from './logger.mjs';
 import { setTime } from './time.mjs';
 import { evalScope } from './evaluate.mjs';
 import { register, Pattern, isPattern, silence, stack } from './pattern.mjs';
-import { NeoCyclist } from './neocyclist.mjs';
 
 export function repl({
-  interval,
   defaultOutput,
-  onSchedulerError,
   onEvalError,
   beforeEval,
   afterEval,
@@ -38,28 +35,14 @@ export function repl({
     onUpdateState?.(state);
   };
 
-  // const scheduler = new Cyclist({
-  //   interval,
-  //   onTrigger: getTrigger({ defaultOutput, getTime }),
-  //   onError: onSchedulerError,
-  //   getTime,
-  //   onToggle: (started) => {
-  //     updateState({ started });
-  //     onToggle?.(started);
-  //   },
-  // });
-
-  const scheduler = new NeoCyclist({
-    // interval,
+  const scheduler = new Cyclist({
     onTrigger: getTrigger({ defaultOutput, getTime }),
-    onError: onSchedulerError,
-    // latency: 0.22,
+    getTime,
     onToggle: (started) => {
       updateState({ started });
       onToggle?.(started);
     },
   });
-
   let pPatterns = {};
   let allTransform;
 
@@ -117,9 +100,13 @@ export function repl({
     } catch (err) {
       console.warn('injectPatternMethods: error:', err);
     }
+    const cpm = register('cpm', function (cpm, pat) {
+      return pat._fast(cpm / 60 / scheduler.cps);
+    });
     evalScope({
       all,
       hush,
+      cpm,
       setCps,
       setcps: setCps,
       setCpm,

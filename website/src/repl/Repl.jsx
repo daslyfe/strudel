@@ -31,7 +31,6 @@ import PlayCircleIcon from '@heroicons/react/20/solid/PlayCircleIcon';
 import './Repl.css';
 import useEvent from '@src/useEvent.mjs';
 
-const { code: randomTune, name } = getRandomTune();
 const { latestCode } = settingsMap.get();
 
 let modulesLoading, presets, drawContext, clearCanvas, isIframe;
@@ -99,7 +98,7 @@ export function Repl({ embedded = false }) {
 
     // init settings
 
-    initCode().then((decoded) => {
+    initCode().then(async (decoded) => {
       let msg;
       if (decoded) {
         editor.setCode(decoded);
@@ -108,6 +107,7 @@ export function Repl({ embedded = false }) {
         editor.setCode(latestCode);
         msg = `Your last session has been loaded!`;
       } else {
+        const { code: randomTune, name } = await getRandomTune();
         editor.setCode(randomTune);
         msg = `A random code snippet named "${name}" has been loaded!`;
       }
@@ -160,7 +160,7 @@ export function Repl({ embedded = false }) {
   const resetEditor = async () => {
     clearCanvas();
     resetLoadedSounds();
-    editorRef.current.repl.setCps(1);
+    editorRef.current.repl.setCps(0.5);
     await prebake(); // declare default samples
   };
 
@@ -177,7 +177,7 @@ export function Repl({ embedded = false }) {
     editorRef.current.evaluate();
   };
   const handleShuffle = async () => {
-    const patternData = getRandomTune();
+    const patternData = await getRandomTune();
     const code = patternData.code;
     logger(`[repl] ✨ loading random tune "${patternData.id}"`);
     setActivePattern(patternData.id);

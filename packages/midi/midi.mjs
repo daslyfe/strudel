@@ -130,7 +130,6 @@ Pattern.prototype.midi = function (output) {
 
     // note off messages will often a few ms arrive late, try to prevent glitching by subtracting from the duration length
     const duration = Math.floor((hap.duration.valueOf() / cps) * 1000 - 10);
-
     if (note != null) {
       const midiNumber = typeof note === 'number' ? note : noteToMidi(note);
       const midiNote = new Note(midiNumber, { attack: velocity, duration });

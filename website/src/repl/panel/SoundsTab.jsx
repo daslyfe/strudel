@@ -11,7 +11,6 @@ const getSamples = (samples) =>
 
 export function SoundsTab() {
   const sounds = useStore(soundMap);
-  console.log({ sounds, soundMap });
   const { soundsFilter } = useSettings();
   const soundEntries = useMemo(() => {
     let filtered = Object.entries(sounds).filter(([key]) => !key.startsWith('_'));

@@ -1,6 +1,24 @@
 // LICENSE GNU General Public License v3.0 see https://github.com/dktr0/WebDirt/blob/main/LICENSE
-// all the credit goes to dktr0's webdirt: https://github.com/dktr0/WebDirt/blob/5ce3d698362c54d6e1b68acc47eb2955ac62c793/dist/AudioWorklets.js
+// processors adapted from dktr0's webdirt: https://github.com/dktr0/WebDirt/blob/5ce3d698362c54d6e1b68acc47eb2955ac62c793/dist/AudioWorklets.js
 // <3
+
+const processBuffer = (inputs, outputs, processBlock) => {
+  const input = inputs[0];
+  const output = outputs[0];
+  const blockSize = 128;
+  if (input == null || output == null) {
+    return false;
+  }
+
+  for (let n = 0; n < blockSize; n++) {
+    input.forEach((inChannel, i) => {
+      const outChannel = output[i % output.length];
+      const block = inChannel[n];
+      outChannel[n] = processBlock(block, n, inChannel, outChannel);
+    });
+  }
+  return true;
+};
 
 class CoarseProcessor extends AudioWorkletProcessor {
   static get parameterDescriptors() {
@@ -13,21 +31,12 @@ class CoarseProcessor extends AudioWorkletProcessor {
   }
 
   process(inputs, outputs, parameters) {
-    const input = inputs[0];
-    const output = outputs[0];
-    const coarse = parameters.coarse;
-    const blockSize = 128;
-    const hasInput = !(input[0] === undefined);
-    if (hasInput) {
-      this.notStarted = false;
-      output[0][0] = input[0][0];
-      for (let n = 1; n < blockSize; n++) {
-        for (let o = 0; o < output.length; o++) {
-          output[o][n] = n % coarse == 0 ? input[0][n] : output[o][n - 1];
-        }
-      }
-    }
-    return this.notStarted || hasInput;
+    let coarse = parameters.coarse[0] ?? 0;
+    coarse = Math.min(128, Math.max(1, Math.round(coarse * 128)));
+    return processBuffer(inputs, outputs, (block, n, inChannel, outChannel) => {
+      const value = n % coarse === 0 ? block : outChannel[n - 1];
+      return value;
+    });
   }
 }
 
@@ -44,32 +53,15 @@ class CrushProcessor extends AudioWorkletProcessor {
   }
 
   process(inputs, outputs, parameters) {
-    const input = inputs[0];
-    const output = outputs[0];
-    const crush = parameters.crush;
-    const blockSize = 128;
-    const hasInput = !(input[0] === undefined);
-    if (hasInput) {
-      this.notStarted = false;
-      if (crush.length === 1) {
-        const x = Math.pow(2, crush[0] - 1);
-        for (let n = 0; n < blockSize; n++) {
-          const value = Math.round(input[0][n] * x) / x;
-          for (let o = 0; o < output.length; o++) {
-            output[o][n] = value;
-          }
-        }
-      } else {
-        for (let n = 0; n < blockSize; n++) {
-          let x = Math.pow(2, crush[n] - 1);
-          const value = Math.round(input[0][n] * x) / x;
-          for (let o = 0; o < output.length; o++) {
-            output[o][n] = value;
-          }
-        }
-      }
-    }
-    return this.notStarted || hasInput;
+    const bitMax = 16;
+    const bitMin = 1;
+    let crush = parameters.crush[0] ?? 8;
+    crush = Math.max(bitMin, bitMax - crush * bitMax);
+
+    return processBuffer(inputs, outputs, (block) => {
+      const x = Math.pow(2, crush - 1);
+      return Math.round(block * x) / x;
+    });
   }
 }
 registerProcessor('crush-processor', CrushProcessor);
@@ -85,23 +77,11 @@ class ShapeProcessor extends AudioWorkletProcessor {
   }
 
   process(inputs, outputs, parameters) {
-    const input = inputs[0];
-    const output = outputs[0];
-    const shape0 = parameters.shape[0];
-    const shape1 = shape0 < 1 ? shape0 : 1.0 - 4e-10;
-    const shape = (2.0 * shape1) / (1.0 - shape1);
-    const blockSize = 128;
-    const hasInput = !(input[0] === undefined);
-    if (hasInput) {
-      this.notStarted = false;
-      for (let n = 0; n < blockSize; n++) {
-        const value = ((1 + shape) * input[0][n]) / (1 + shape * Math.abs(input[0][n]));
-        for (let o = 0; o < output.length; o++) {
-          output[o][n] = value;
-        }
-      }
-    }
-    return this.notStarted || hasInput;
+    const shape_param = parameters.shape[0] ?? 0;
+    const shape = (2.0 * shape_param) / (1.0 - shape_param);
+    return processBuffer(inputs, outputs, (block) => {
+      return ((1 + shape) * block) / (1 + shape * Math.abs(block));
+    });
   }
 }
 

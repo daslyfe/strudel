@@ -1,7 +1,3 @@
-// LICENSE GNU General Public License v3.0 see https://github.com/dktr0/WebDirt/blob/main/LICENSE
-// processors adapted from dktr0's webdirt: https://github.com/dktr0/WebDirt/blob/5ce3d698362c54d6e1b68acc47eb2955ac62c793/dist/AudioWorklets.js
-// <3
-
 const processBuffer = (inputs, outputs, processBlock) => {
   const input = inputs[0];
   const output = outputs[0];
@@ -20,6 +16,8 @@ const processBuffer = (inputs, outputs, processBlock) => {
   return true;
 };
 
+// coarse, crush, and shape processors adapted from dktr0's webdirt: https://github.com/dktr0/WebDirt/blob/5ce3d698362c54d6e1b68acc47eb2955ac62c793/dist/AudioWorklets.js
+// LICENSE GNU General Public License v3.0 see https://github.com/dktr0/WebDirt/blob/main/LICENSE
 class CoarseProcessor extends AudioWorkletProcessor {
   static get parameterDescriptors() {
     return [{ name: 'coarse', defaultValue: 1 }];
@@ -27,7 +25,6 @@ class CoarseProcessor extends AudioWorkletProcessor {
 
   constructor() {
     super();
-    this.notStarted = true;
   }
 
   process(inputs, outputs, parameters) {
@@ -49,7 +46,6 @@ class CrushProcessor extends AudioWorkletProcessor {
 
   constructor() {
     super();
-    this.notStarted = true;
   }
 
   process(inputs, outputs, parameters) {
@@ -68,19 +64,23 @@ registerProcessor('crush-processor', CrushProcessor);
 
 class ShapeProcessor extends AudioWorkletProcessor {
   static get parameterDescriptors() {
-    return [{ name: 'shape', defaultValue: 0 }];
+    return [
+      { name: 'shape', defaultValue: 0 },
+      { name: 'postgain', defaultValue: 1 },
+    ];
   }
 
   constructor() {
     super();
-    this.notStarted = true;
   }
 
   process(inputs, outputs, parameters) {
-    const shape_param = parameters.shape[0] ?? 0;
-    const shape = (2.0 * shape_param) / (1.0 - shape_param);
-    return processBuffer(inputs, outputs, (block) => {
-      return ((1 + shape) * block) / (1 + shape * Math.abs(block));
+    let shape_param = parameters.shape[0];
+    const postgain = Math.max(0.001, Math.min(1, parameters.postgain[0]));
+    const shape = shape_param * 100;
+    return processBuffer(inputs, outputs, (block, n) => {
+      const val = ((1 + shape) * block) / (1 + shape * Math.abs(block));
+      return val * postgain;
     });
   }
 }

@@ -50,8 +50,8 @@ function loadWorklets() {
   return workletsLoading;
 }
 
-function getWorklet(ac, processor, params) {
-  const node = new AudioWorkletNode(ac, processor);
+export function getWorklet(ac, processor, params, config) {
+  const node = new AudioWorkletNode(ac, processor, config);
   Object.entries(params).forEach(([key, value]) => {
     node.parameters.get(key).value = value;
   });
@@ -316,6 +316,9 @@ export const superdough = async (value, deadline, hapDuration) => {
     coarse,
     crush,
     shape,
+    shapevol = 1,
+    distort,
+    distortvol = 1,
     pan,
     vowel,
     delay = 0,
@@ -457,7 +460,8 @@ export const superdough = async (value, deadline, hapDuration) => {
   // effects
   coarse !== undefined && chain.push(getWorklet(ac, 'coarse-processor', { coarse }));
   crush !== undefined && chain.push(getWorklet(ac, 'crush-processor', { crush }));
-  shape !== undefined && chain.push(getWorklet(ac, 'shape-processor', { shape }));
+  shape !== undefined && chain.push(getWorklet(ac, 'shape-processor', { shape, postgain: shapevol }));
+  distort !== undefined && chain.push(getWorklet(ac, 'distort-processor', { distort, postgain: distortvol }));
 
   compressorThreshold !== undefined &&
     chain.push(

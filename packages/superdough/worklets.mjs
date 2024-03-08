@@ -1,5 +1,8 @@
 // coarse, crush, and shape processors adapted from dktr0's webdirt: https://github.com/dktr0/WebDirt/blob/5ce3d698362c54d6e1b68acc47eb2955ac62c793/dist/AudioWorklets.js
 // LICENSE GNU General Public License v3.0 see https://github.com/dktr0/WebDirt/blob/main/LICENSE
+function clamp(x, minval, maxval) {
+  return Math.max(minval, Math.min(maxval, x));
+}
 
 class CoarseProcessor extends AudioWorkletProcessor {
   static get parameterDescriptors() {
@@ -161,6 +164,35 @@ const saw = (phase, dt) => {
   return v - polyBlep(phase, dt);
 };
 
+const sine = (phase, dt) => {
+  return Math.sin(phase);
+};
+
+const decayEnvelope = (startTime, endTime, currentTime, curve) => {
+  if (startTime > currentTime) {
+    return 1;
+  }
+  if (currentTime > endTime) {
+    return 0;
+  }
+
+  let x1 = startTime;
+  let y1 = 1;
+  let x2 = endTime;
+  let y2 = 0.001;
+
+  // Calculate the growth or decay rate (b)
+
+  let b = Math.log(y1 / y2) / (x1 - x2);
+
+  // Calculate the initial value (a)
+  let a = y1 / Math.exp(b * x1);
+
+  // Use the function to calculate y for any x
+  let x = currentTime;
+  return a * Math.exp(b * x);
+};
+
 class SuperSawOscillatorProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
@@ -269,3 +301,95 @@ class SuperSawOscillatorProcessor extends AudioWorkletProcessor {
 }
 
 registerProcessor('supersaw-oscillator', SuperSawOscillatorProcessor);
+
+class KickProcessor extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this.phase = 0;
+  }
+
+  static get parameterDescriptors() {
+    return [
+      {
+        name: 'begin',
+        defaultValue: 0,
+        max: Number.POSITIVE_INFINITY,
+        min: 0,
+      },
+
+      {
+        name: 'end',
+        defaultValue: 0,
+        max: Number.POSITIVE_INFINITY,
+        min: 0,
+      },
+
+      {
+        name: 'frequency',
+        defaultValue: 440,
+        min: Number.EPSILON,
+      },
+      {
+        name: 'envamount',
+        defaultValue: 0.5,
+        min: Number.EPSILON,
+      },
+      {
+        name: 'decay',
+        defaultValue: 0.5,
+        min: 0,
+      },
+      {
+        name: 'impulseamount',
+        defaultValue: 0.5,
+        min: 0,
+      },
+    ];
+  }
+  incrementPhase(dt) {
+    this.phase += dt;
+    if (this.phase > 1.0) {
+      this.phase = this.phase - 1;
+    }
+  }
+  process(inputs, outputs, params) {
+    const output = outputs[0];
+    const begin = params.begin[0];
+    const end = params.end[0];
+    // eslint-disable-next-line no-undef
+    if (currentTime <= begin) {
+      return true;
+    }
+    // eslint-disable-next-line no-undef
+    if (currentTime >= end) {
+      return false;
+    }
+    const frequency = params.frequency[0];
+    const decay = params.decay[0];
+    // eslint-disable-next-line no-undef
+    const dt = frequency / sampleRate;
+
+    for (let channel = 0; channel < output.length; ++channel) {
+      const outputChannel = output[channel];
+
+      for (let i = 0; i < outputChannel.length; ++i) {
+        this.phase = this.phase ?? Math.random();
+
+        // Implement the generate() logic here
+        const v = sine(this.phase, dt);
+        // Access the generated audio and sync signals
+        const audioOut = v * decayEnvelope(begin, begin + decay, currentTime);
+
+        // Set the output values
+        outputChannel[i] = audioOut;
+        this.incrementPhase(dt);
+      }
+    }
+
+    return true;
+  }
+
+  // Add other methods such as generate(), getSample(), getSync(), and hardsync_init() as needed
+}
+
+registerProcessor('kick-processor', KickProcessor);

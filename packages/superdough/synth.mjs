@@ -19,6 +19,7 @@ const getFrequencyFromValue = (value) => {
 
 const waveforms = ['triangle', 'square', 'sawtooth', 'sine'];
 const noises = ['pink', 'white', 'brown', 'crackle'];
+const drums = ['kick'];
 
 export function registerSynthSounds() {
   [...waveforms].forEach((s) => {
@@ -60,6 +61,53 @@ export function registerSynthSounds() {
       { type: 'synth', prebake: true },
     );
   });
+
+  registerSound(
+    'kick',
+    (begin, value, onended) => {
+      const ac = getAudioContext();
+      let { duration } = value;
+
+      const frequency = getFrequencyFromValue(value);
+
+      const [attack, decay, sustain, release] = getADSRValues(
+        [value.attack, value.decay, value.sustain, value.release],
+        'linear',
+        [0.001, 0.05, 0.6, 0.01],
+      );
+
+      const holdend = begin + duration;
+      const end = holdend + release + 0.01;
+
+      let node = getWorklet(
+        ac,
+        'kick-processor',
+        {
+          frequency,
+          begin,
+          end,
+        },
+        {
+          outputChannelCount: [1],
+        },
+      );
+
+      getPitchEnvelope(node.parameters.get('detune'), value, begin, holdend);
+      const envGain = gainNode(1);
+      node = node.connect(envGain);
+
+      getParamADSR(node.gain, attack, decay, sustain, release, 0, 0.3, begin, holdend, 'linear');
+
+      return {
+        node,
+        stop: (time) => {
+          // o.stop(time);
+        },
+      };
+    },
+    { prebake: true, type: 'synth' },
+  );
+
   registerSound(
     'supersaw',
     (begin, value, onended) => {

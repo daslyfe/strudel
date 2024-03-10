@@ -1,13 +1,14 @@
-import { Pattern, getDrawContext, silence, register, pure } from './index.mjs';
-import controls from './controls.mjs'; // do not import from index.mjs as it breaks for some reason..
-const { createParams } = controls;
+import { Pattern, silence, register, pure, createParams } from '@strudel/core';
+import { getDrawContext } from './draw.mjs';
 
 let clearColor = '#22222210';
 
 Pattern.prototype.animate = function ({ callback, sync = false, smear = 0.5 } = {}) {
   window.frame && cancelAnimationFrame(window.frame);
   const ctx = getDrawContext();
-  const { clientWidth: ww, clientHeight: wh } = ctx.canvas;
+  let { clientWidth: ww, clientHeight: wh } = ctx.canvas;
+  ww *= window.devicePixelRatio;
+  wh *= window.devicePixelRatio;
   let smearPart = smear === 0 ? '99' : Number((1 - smear) * 100).toFixed(0);
   smearPart = smearPart.length === 1 ? `0${smearPart}` : smearPart;
   clearColor = `#200010${smearPart}`;

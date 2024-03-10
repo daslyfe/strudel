@@ -1,4 +1,4 @@
-import { controls, evalScope, hash2code, logger } from '@strudel/core';
+import { evalScope, hash2code, logger } from '@strudel/core';
 import { settingPatterns, defaultAudioDeviceName } from '../settings.mjs';
 import { getAudioContext, initializeAudioOutput, setDefaultAudioContext } from '@strudel/webaudio';
 
@@ -72,6 +72,7 @@ export async function getRandomTune() {
 export function loadModules() {
   let modules = [
     import('@strudel/core'),
+    import('@strudel/draw'),
     import('@strudel/tonal'),
     import('@strudel/mini'),
     import('@strudel/xen'),
@@ -92,11 +93,7 @@ export function loadModules() {
     modules = modules.concat([import('@strudel/midi'), import('@strudel/osc')]);
   }
 
-  return evalScope(
-    controls, // sadly, this cannot be exported from core direclty
-    settingPatterns,
-    ...modules,
-  );
+  return evalScope(settingPatterns, ...modules);
 }
 
 let lastShared;

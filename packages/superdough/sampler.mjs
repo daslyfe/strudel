@@ -34,6 +34,7 @@ export const getSampleBufferSource = async (s, n, note, speed, freq, bank, resol
 
   let sampleUrl;
   let index = 0;
+
   if (Array.isArray(bank)) {
     index = getSoundIndex(n, bank.length);
     sampleUrl = bank[index];
@@ -266,7 +267,8 @@ export async function onTriggerSample(t, value, onended, bank, resolveUrl) {
     // no playback
     return;
   }
-  loop = s.startsWith('wt_') ? 1 : value.loop;
+
+  loop = typeof s === 'string' && s.startsWith('wt_') ? 1 : value.loop;
   const ac = getAudioContext();
   // destructure adsr here, because the default should be different for synths and samples
 

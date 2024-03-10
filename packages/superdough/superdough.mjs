@@ -20,8 +20,28 @@ export function registerSound(key, onTrigger, data = {}) {
   soundMap.setKey(key, { onTrigger, data });
 }
 
-export function getSound(s) {
-  return soundMap.get()[s];
+export function getSound(s, bank) {
+  const smap = soundMap.get();
+
+  if (bank == null) {
+    return smap[s];
+  }
+
+  if (typeof s === 'number') {
+    const sounds = Object.keys(smap).filter((key) => key.includes(bank));
+    const index = Math.round(s) % sounds.length;
+    const sound = smap[sounds[index]];
+    console.log(sound);
+    return sound;
+  }
+
+  s = `${bank}_${s}`;
+
+  // console.log(s);
+  // console.log(soundMap, smap[s]);
+  return smap[s];
+
+  // return soundMap.get()[s];
 }
 
 export const resetLoadedSounds = () => soundMap.set({});
@@ -352,24 +372,40 @@ export const superdough = async (value, deadline, hapDuration) => {
   const onended = () => {
     toDisconnect.forEach((n) => n?.disconnect());
   };
-  if (bank && s) {
-    s = `${bank}_${s}`;
-  }
 
   // get source AudioNode
   let sourceNode;
+
+  // if (bank && s) {
+  //   s = `${bank}_${s}`;
+  // }
   if (source) {
     sourceNode = source(t, value, hapDuration);
-  } else if (getSound(s)) {
-    const { onTrigger } = getSound(s);
-    const soundHandle = await onTrigger(t, value, onended);
-    if (soundHandle) {
-      sourceNode = soundHandle.node;
-      soundHandle.stop(t + hapDuration);
-    }
   } else {
-    throw new Error(`sound ${s} not found! Is it loaded?`);
+    const sound = getSound(s, bank);
+    if (sound) {
+      const { onTrigger } = sound;
+      const soundHandle = await onTrigger(t, value, onended);
+      if (soundHandle) {
+        sourceNode = soundHandle.node;
+        soundHandle.stop(t + hapDuration);
+      }
+    } else {
+      throw new Error(`sound ${s} not found! Is it loaded?`);
+    }
   }
+  // if (source) {
+  //   sourceNode = source(t, value, hapDuration);
+  // } else if (getSound(s, bank)) {
+  //   const { onTrigger } = getSound(s);
+  //   const soundHandle = await onTrigger(t, value, onended);
+  //   if (soundHandle) {
+  //     sourceNode = soundHandle.node;
+  //     soundHandle.stop(t + hapDuration);
+  //   }
+  // } else {
+  //   throw new Error(`sound ${s} not found! Is it loaded?`);
+  // }
   if (!sourceNode) {
     // if onTrigger does not return anything, we will just silently skip
     // this can be used for things like speed(0) in the sampler

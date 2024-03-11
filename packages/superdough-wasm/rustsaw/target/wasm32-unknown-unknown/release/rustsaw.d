@@ -1,0 +1,1 @@
+/Users/jaderowland/Documents/GitHub/strudel/packages/superdough-wasm/rustsaw/target/wasm32-unknown-unknown/release/rustsaw.wasm: /Users/jaderowland/Documents/GitHub/strudel/packages/superdough-wasm/rustsaw/src/lib.rs

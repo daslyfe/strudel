@@ -1,3 +1,4 @@
+import { NeoCyclist } from './neocyclist.mjs';
 import { Cyclist } from './cyclist.mjs';
 import { evaluate as _evaluate } from './evaluate.mjs';
 import { logger } from './logger.mjs';
@@ -15,6 +16,7 @@ export function repl({
   onToggle,
   editPattern,
   onUpdateState,
+  sync = false,
 }) {
   const state = {
     schedulerError: undefined,
@@ -35,14 +37,18 @@ export function repl({
     onUpdateState?.(state);
   };
 
-  const scheduler = new Cyclist({
+  const schedulerOptions = {
     onTrigger: getTrigger({ defaultOutput, getTime }),
     getTime,
     onToggle: (started) => {
       updateState({ started });
       onToggle?.(started);
     },
-  });
+  };
+
+  // NeoCyclist uses a shared worker to communicate between instances, which is not supported on mobile chrome
+  const scheduler =
+    sync && typeof SharedWorker != 'undefined' ? new NeoCyclist(schedulerOptions) : new Cyclist(schedulerOptions);
   let pPatterns = {};
   let allTransform;
 

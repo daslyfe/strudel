@@ -1,6 +1,4 @@
-// will move to https://github.com/felixroos/zyklus
-// TODO: started flag
-
+// used to consistently schedule events, for use in a service worker - see <https://github.com/tidalcycles/strudel/blob/main/packages/core/clockworker.mjs>
 this.createClock = (
   getTime,
   callback, // called slightly before each cycle

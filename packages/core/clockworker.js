@@ -1,4 +1,8 @@
-importScripts('./zyklus.js');
+// eslint-disable-next-line no-undef
+importScripts('./neozyklus.js');
+// TODO: swap below line with above one when firefox supports esm imports in service workers
+// see https://developer.mozilla.org/en-US/docs/Web/API/ServiceWorker?retiredLocale=de#browser_compatibility
+// import createClock from './zyklus.mjs';
 
 function getTime() {
   const precision = 10 ** 4;
@@ -6,10 +10,11 @@ function getTime() {
   return Math.round(seconds * precision) / precision;
 }
 
-let numPorts = 0;
 let num_cycles_at_cps_change = 0;
 let num_ticks_since_cps_change = 0;
 let cps = 0.5;
+// {id: {started: boolean}}
+const clients = new Map();
 const duration = 0.1;
 const channel = new BroadcastChannel('strudeltick');
 
@@ -33,18 +38,23 @@ const sendTick = (phase, duration, tick, time) => {
 const clock = this.createClock(getTime, sendTick, duration);
 let started = false;
 
-const startClock = () => {
+const startClock = (id) => {
+  clients.set(id, { started: true });
   if (started) {
     return;
   }
   clock.start();
   started = true;
 };
-const stopClock = async () => {
-  //dont stop the clock if mutliple instances are using it...
-  if (!started || numPorts !== 1) {
+const stopClock = async (id) => {
+  clients.set(id, { started: false });
+
+  const otherClientStarted = Array.from(clients.values()).some((c) => c.started);
+  //dont stop the clock if other instances are running...
+  if (!started || otherClientStarted) {
     return;
   }
+
   clock.stop();
   setCycle(0);
   started = false;
@@ -73,9 +83,9 @@ const processMessage = (message) => {
     }
     case 'toggle': {
       if (payload.started) {
-        startClock();
+        startClock(message.id);
       } else {
-        stopClock();
+        stopClock(message.id);
       }
       break;
     }
@@ -85,8 +95,9 @@ const processMessage = (message) => {
 this.onconnect = function (e) {
   // the incoming port
   const port = e.ports[0];
-  numPorts = numPorts + 1;
+
   port.addEventListener('message', function (e) {
+    console.log(e.data);
     processMessage(e.data);
   });
   port.start(); // Required when using addEventListener. Otherwise called implicitly by onmessage setter.

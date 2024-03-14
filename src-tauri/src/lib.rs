@@ -1,148 +1,167 @@
-// use wasm_bindgen::prelude::*;
-// use std::collections::HashMap;
-// use crate::rand::Rng;
-// // use rand::Rng;
+use std::cmp;
+use std::ops::Sub;
+use std::sync::atomic::{AtomicI32, AtomicU8, Ordering};
 
+use wasm_bindgen::JsValue;
+// use log::{info, warn};
+use web_sys::console::log;
 
-// // static mut LEFT_PHASE: f64 = 0.0;
-// // static
+pub fn poly_blep(p: f32, dt: &f32) -> f32 {
+    let mut phase = p + 0.0;
+    // 0 <= phase < 1
+    if phase < *dt {
+        phase /= dt;
+        // 2 * (phase - phase^2/2 - 0.5)
+        return phase + phase - phase * phase - 1.0;
+    }
+    if phase > 1.0 - dt {
+        phase = (phase - 1.0) / dt;
+        // 2 * (phase^2/2 + phase + 0.5)
+        return phase * phase + phase + phase + 1.0;
+    }
 
-// #[wasm_bindgen]
-// pub fn poly_blep (p: &f64, dt: &f64) ->f64  {
-//   let mut phase = p + 0.0; 
-//   // 0 <= phase < 1
-//   if phase < *dt {
-//     phase /= dt;
-//     // 2 * (phase - phase^2/2 - 0.5)
-//     return phase + phase - phase * phase - 1.0;
-//   }
-//  if phase > 1.0 - dt {
-//     phase = (phase - 1.0) / dt;
-//     // 2 * (phase^2/2 + phase + 0.5)
-//     return phase * phase + phase + phase + 1.0;
-//   }
-
-//   // 0 otherwise
-//     0.0
-// }
-// #[wasm_bindgen]
-// pub fn saw(p: &f64, dt: &f64) ->f64 {
-//     // Correct phase, so it would be in line with sin(2.*M_PI * phase)
-//   let mut corrected_phase = p + 0.5;
- 
-//   if corrected_phase >= 1.0 {
-//     corrected_phase = corrected_phase - 1.0;
-//   };
-//   let v = 2.0 * corrected_phase - 1.0;
-
-//  v - poly_blep(&corrected_phase, dt)
-// }
-
-// #[wasm_bindgen]
-// pub fn supersawprocessor(
-//     current_time: f64,
-//     sample_rate: f64,
-//     frequency: f64,
-//     phase: Vec<f64>,
-//     detune: f64,
-//     voices: i32,
-//     freqspread: f64,
-//     panspread: f64,
-//     outputs: Vec<Vec<f64>>
-// ) -> Vec<Vec<f64>> {
-   
-//     frequency =   (2.0_f64.powf(detune)).into() / 1200;
-//     panspread = panspread * 0.5 + 0.5;
-//     let gain_1 = (panspread - 1.0).sqrt();
-//     let gain_2 = panspread.sqrt();
-//     let output_length = 128;
-//     let mut output_1 = outputs.get(0).unwrap();
-//     // let mut output_1 : HashMap<&i32,  f64> = HashMap::new();
-//     let mut output_2 = outputs.get(1).unwrap();
-//     let mut phase : HashMap<&i32,  f64> = HashMap::new();
-
-
-//     for n in 0..voices {
-//         let mut adj = 0;
-//         let is_odd = (n & 1) == 1;
-//         let mut gain_l = gain_1;
-//         let mut gain_r = gain_2;
-//         // invert right and left gain
-//         if is_odd {
-//           gain_l = gain_1;
-//           gain_r = gain_2;
-//         }
-//         let dt = frequency / sample_rate;
-
-
-//       for  i in 0..output_length {
-//         let mut rng = rand::thread_rng();
-//         let mut cur_phase = phase.get(&n).unwrap_or(&rng.gen::<f64>());
-     
-//         let v = saw(cur_phase, &dt);
-
-//         output_1.insert(&i, v * gain_l);
-//         output_2.insert(&i, v * gain_r);
-//         let mut new_phase = cur_phase + dt;
-      
-
-
-//         if new_phase > 1.0 {
-//           new_phase = new_phase - 1.0;
-//         }
-
-//         phase.insert(&n, new_phase);
-//       }
-
-
-//      }
-
-
-//      Vec::new()
-// }
-
-
-use wasm_bindgen::prelude::*;
-
-#[wasm_bindgen]
-pub struct Output {
-  pub output_1: Vec<f64>,
-  pub output_2: Vec<f64>,
-  pub phase: f64
+    // 0 otherwise
+    0.0
 }
 
-// static mut PHASE: f64 = 0.0;
-#[wasm_bindgen]
-pub fn saw(current_time: f64, sample_rate: f64, o1: Vec<f64>, o2: Vec<f64>, phase: f64, frequency: f64) -> Output {
+pub fn saw(p: f32, dt: &f32) -> f32 {
+    // Correct phase, so it would be in line with sin(2.*M_PI * phase)
+    let mut corrected_phase = p + 0.5;
 
-    let mut output_1 = o1.to_vec();
-    let mut output_2 = o2.to_vec();
-    let output_length = output_1.len();
-    let mut new_phase = phase;
+    if corrected_phase >= 1.0 {
+        corrected_phase = corrected_phase - 1.0;
+    }
+    let v = 2.0 * corrected_phase - 1.0;
 
-    let gain1 = (1 - panspread);
-    let gain2 = Math.sqrt(panspread);
-
-
-      for  i in 0..output_length {
-        let mut cur_phase = phase;
-     
-        let v =  (((frequency * (cur_phase /sample_rate) * 1.0) % 1.0) - 0.5) * 1.0;
-
-        output_1.insert(i, v );
-        output_2.insert(i, v );
-        new_phase+=1.0;
-      }
-    let p = vec![new_phase];
-   
-     return Output {
-      output_1,
-      output_2,
-      phase: new_phase
-     }
+    v - poly_blep(corrected_phase, dt)
+}
+// Let's implement a simple sine oscillator with variable frequency and volume.
+pub struct Oscillator {
+    params: &'static Params,
+    accumulator: u32,
+    phase: Vec<f32>,
+    logged: i8,
 }
 
+impl Oscillator {
+    pub fn new(params: &'static Params) -> Self {
+        Self {
+            params,
+            accumulator: 0,
+            phase: Vec::new(),
+            logged: 0,
+        }
+    }
+}
 
+impl Oscillator {
+    pub fn process(&mut self, output: &mut [f32]) -> bool {
+        // This method is called in the audio process thread.
+        // All imports are set, so host functionality available in worklets
+        // (for example, logging) can be used:
+        // `web_sys::console::log_1(&JsValue::from(output.len()));`
+        // Note that currently TextEncoder and TextDecoder are stubs, so passing
+        // strings may not work in this thread.
+        // unsafe { web_sys::console::log_1(&JsValue::from(output.len())) };
+        let frequency = f32::from(self.params.frequency.load(Ordering::Relaxed));
 
+        // let volume: u8 = self.params.volume.load(Ordering::Relaxed);
+        // // let mut panspread = f32::from(self.params.panspread.load(Ordering::Relaxed));
+        // // let freqspread = self.params.freqspread.load(Ordering::Relaxed);
+        // // let voices = self.params.voices.load(Ordering::Relaxed);
 
+        let mut panspread: f32 = 0.5;
+        let freqspread: f32 = 0.5;
+        let voices: usize = 6;
+        // let frequency: f32 = 440.0;
 
+        let sample_rate: f32 = 44100.0;
+
+        panspread = panspread * 0.5 + 0.5;
+        let gain_1 = (1.0 - panspread).sqrt();
+        let gain_2 = panspread.sqrt();
+        for nu in 0..voices {
+            let n = nu as f32;
+
+            let mut adj: f32 = 0.0;
+            let is_odd = (nu & 1) == 1;
+            if nu > 0 {
+                if is_odd {
+                    adj = n * freqspread;
+                } else {
+                    adj = -((n.sub(1.0)) * freqspread);
+                }
+            }
+            let freq = (frequency + adj * 0.01 * frequency).max(1.0);
+            let mut gain_l = gain_1;
+            let mut gain_r = gain_2;
+            // invert right and left gain
+            if is_odd {
+                gain_l = gain_2;
+                gain_r = gain_1;
+            }
+            // eslint-disable-next-line no-undef
+            let dt = freq / sample_rate;
+            // for a in output {
+            for i in 0..output.len() {
+                let cur_phase = *self.phase.get(nu).unwrap_or(&0.0);
+                //     let mut v = output.get(i).unwrap();
+                let v = saw(cur_phase, &dt);
+                let curr_value = *output.get(i).unwrap();
+                let new_value = curr_value + (v * gain_l);
+                if self.logged < 1 {
+                    // unsafe { web_sys::console::log_1(&JsValue::from(cur_phase)) };
+                    unsafe { web_sys::console::log_1(&JsValue::from(gain_l)) };
+                    // unsafe { web_sys::console::log_1(&JsValue::from(new_value)) };
+                }
+
+                output[i] = new_value;
+                // // output_2[i] = output.get(i).unwrap() + (v * gain_r);
+                let mut newphase = cur_phase + dt;
+
+                if newphase > 1.0 {
+                    newphase = newphase - 1.0;
+                }
+                // self.phase.remove(nu);
+                if self.phase.len() <= nu {
+                    self.phase.insert(nu, newphase)
+                } else {
+                    self.phase[nu] = newphase;
+                }
+
+                // unsafe { web_sys::console::log_1(&JsValue::from(output[i])) };
+
+                // self.phase.insert(nu, newphase);
+                // self.phase[nu] = newphase;
+            }
+
+            self.logged = 1;
+
+            //     //     self.accumulator += u32::from(frequency);
+            //     //     *a = (self.accumulator as f32 / 512.).sin() * (volume as f32 / 100.);
+            //     //
+        }
+        true
+    }
+}
+
+#[derive(Default)]
+pub struct Params {
+    // Use atomics for parameters so they can be set in the main thread and
+    // fetched by the audio process thread without further synchronization.
+
+    // panspread: AtomicU8,
+    // freqspread: AtomicI32,
+    // voices: AtomicU8,
+    frequency: AtomicU8,
+    volume: AtomicU8,
+}
+
+impl Params {
+    pub fn set_frequency(&self, frequency: u8) {
+        self.frequency.store(frequency, Ordering::Relaxed);
+    }
+    pub fn set_volume(&self, volume: u8) {
+        self.volume.store(volume, Ordering::Relaxed);
+    }
+}

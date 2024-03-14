@@ -13,6 +13,8 @@ import { createFilter, gainNode, getCompressor } from './helpers.mjs';
 import { map } from 'nanostores';
 import { logger } from './logger.mjs';
 import { loadBuffer } from './sampler.mjs';
+import Glicol from 'glicol';
+import { sin } from 'glicol';
 
 export const soundMap = map();
 
@@ -259,6 +261,7 @@ export function resetGlobalEffects() {
 }
 
 export const superdough = async (value, deadline, hapDuration) => {
+  console.log(Glicol);
   const ac = getAudioContext();
   if (typeof value !== 'object') {
     throw new Error(
@@ -358,6 +361,7 @@ export const superdough = async (value, deadline, hapDuration) => {
 
   // get source AudioNode
   let sourceNode;
+
   if (source) {
     sourceNode = source(t, value, hapDuration);
   } else if (getSound(s)) {
@@ -382,6 +386,12 @@ export const superdough = async (value, deadline, hapDuration) => {
   }
   const chain = []; // audio nodes that will be connected to each other sequentially
   chain.push(sourceNode);
+
+  const glicol = new Glicol({ audioContext: ac, connectTo: gain });
+  glicol.play({
+    o: sin(440).mul('~am'),
+    '~am': sin(0.81).mul(0.3).add(0.5),
+  });
 
   // gain stage
   chain.push(gainNode(gain));
@@ -523,5 +533,271 @@ export const superdough = async (value, deadline, hapDuration) => {
   // this is crucial for performance
   toDisconnect = chain.concat([delaySend, reverbSend, analyserSend]);
 };
+
+// export const superdough = async (value, deadline, hapDuration) => {
+//   const ac = getAudioContext();
+//   if (typeof value !== 'object') {
+//     throw new Error(
+//       `expected hap.value to be an object, but got "${value}". Hint: append .note() or .s() to the end`,
+//       'error',
+//     );
+//   }
+
+//   // duration is passed as value too..
+//   value.duration = hapDuration;
+//   // calculate absolute time
+//   let t = ac.currentTime + deadline;
+//   // destructure
+//   let {
+//     s = 'triangle',
+//     bank,
+//     source,
+//     gain = 0.8,
+//     postgain = 1,
+//     density = 0.03,
+//     // filters
+//     ftype = '12db',
+//     fanchor = 0.5,
+//     // low pass
+//     cutoff,
+//     lpenv,
+//     lpattack,
+//     lpdecay,
+//     lpsustain,
+//     lprelease,
+//     resonance = 1,
+//     // high pass
+//     hpenv,
+//     hcutoff,
+//     hpattack,
+//     hpdecay,
+//     hpsustain,
+//     hprelease,
+//     hresonance = 1,
+//     // band pass
+//     bpenv,
+//     bandf,
+//     bpattack,
+//     bpdecay,
+//     bpsustain,
+//     bprelease,
+//     bandq = 1,
+//     channels = [1, 2],
+//     //phaser
+//     phaser,
+//     phaserdepth = 0.75,
+//     phasersweep,
+//     phasercenter,
+//     //
+//     coarse,
+//     crush,
+//     shape,
+//     shapevol = 1,
+//     distort,
+//     distortvol = 1,
+//     pan,
+//     vowel,
+//     delay = 0,
+//     delayfeedback = 0.5,
+//     delaytime = 0.25,
+//     orbit = 1,
+//     room,
+//     roomfade,
+//     roomlp,
+//     roomdim,
+//     roomsize,
+//     ir,
+//     i = 0,
+//     velocity = 1,
+//     analyze, // analyser wet
+//     fft = 8, // fftSize 0 - 10
+//     compressor: compressorThreshold,
+//     compressorRatio,
+//     compressorKnee,
+//     compressorAttack,
+//     compressorRelease,
+//   } = value;
+
+//   gain = nanFallback(gain, 1);
+
+//   //music programs/audio gear usually increments inputs/outputs from 1, so imitate that behavior
+//   channels = (Array.isArray(channels) ? channels : [channels]).map((ch) => ch - 1);
+
+//   gain *= velocity; // velocity currently only multiplies with gain. it might do other things in the future
+//   let toDisconnect = []; // audio nodes that will be disconnected when the source has ended
+//   const onended = () => {
+//     toDisconnect.forEach((n) => n?.disconnect());
+//   };
+//   if (bank && s) {
+//     s = `${bank}_${s}`;
+//   }
+
+//   // get source AudioNode
+//   let sourceNode;
+//   if (source) {
+//     sourceNode = source(t, value, hapDuration);
+//   } else if (getSound(s)) {
+//     const { onTrigger } = getSound(s);
+//     const soundHandle = await onTrigger(t, value, onended);
+//     if (soundHandle) {
+//       sourceNode = soundHandle.node;
+//       soundHandle.stop(t + hapDuration);
+//     }
+//   } else {
+//     throw new Error(`sound ${s} not found! Is it loaded?`);
+//   }
+//   if (!sourceNode) {
+//     // if onTrigger does not return anything, we will just silently skip
+//     // this can be used for things like speed(0) in the sampler
+//     return;
+//   }
+
+//   if (ac.currentTime > t) {
+//     logger('[webaudio] skip hap: still loading', ac.currentTime - t);
+//     return;
+//   }
+//   const chain = []; // audio nodes that will be connected to each other sequentially
+//   chain.push(sourceNode);
+
+//   // gain stage
+//   chain.push(gainNode(gain));
+
+//   if (cutoff !== undefined) {
+//     let lp = () =>
+//       createFilter(
+//         ac,
+//         'lowpass',
+//         cutoff,
+//         resonance,
+//         lpattack,
+//         lpdecay,
+//         lpsustain,
+//         lprelease,
+//         lpenv,
+//         t,
+//         t + hapDuration,
+//         fanchor,
+//       );
+//     chain.push(lp());
+//     if (ftype === '24db') {
+//       chain.push(lp());
+//     }
+//   }
+
+//   if (hcutoff !== undefined) {
+//     let hp = () =>
+//       createFilter(
+//         ac,
+//         'highpass',
+//         hcutoff,
+//         hresonance,
+//         hpattack,
+//         hpdecay,
+//         hpsustain,
+//         hprelease,
+//         hpenv,
+//         t,
+//         t + hapDuration,
+//         fanchor,
+//       );
+//     chain.push(hp());
+//     if (ftype === '24db') {
+//       chain.push(hp());
+//     }
+//   }
+
+//   if (bandf !== undefined) {
+//     let bp = () =>
+//       createFilter(
+//         ac,
+//         'bandpass',
+//         bandf,
+//         bandq,
+//         bpattack,
+//         bpdecay,
+//         bpsustain,
+//         bprelease,
+//         bpenv,
+//         t,
+//         t + hapDuration,
+//         fanchor,
+//       );
+//     chain.push(bp());
+//     if (ftype === '24db') {
+//       chain.push(bp());
+//     }
+//   }
+
+//   if (vowel !== undefined) {
+//     const vowelFilter = ac.createVowelFilter(vowel);
+//     chain.push(vowelFilter);
+//   }
+
+//   // effects
+//   coarse !== undefined && chain.push(getWorklet(ac, 'coarse-processor', { coarse }));
+//   crush !== undefined && chain.push(getWorklet(ac, 'crush-processor', { crush }));
+//   shape !== undefined && chain.push(getWorklet(ac, 'shape-processor', { shape, postgain: shapevol }));
+//   distort !== undefined && chain.push(getWorklet(ac, 'distort-processor', { distort, postgain: distortvol }));
+
+//   compressorThreshold !== undefined &&
+//     chain.push(
+//       getCompressor(ac, compressorThreshold, compressorRatio, compressorKnee, compressorAttack, compressorRelease),
+//     );
+
+//   // panning
+//   if (pan !== undefined) {
+//     const panner = ac.createStereoPanner();
+//     panner.pan.value = 2 * pan - 1;
+//     chain.push(panner);
+//   }
+//   // phaser
+//   if (phaser !== undefined && phaserdepth > 0) {
+//     const phaserFX = getPhaser(orbit, t, phaser, phaserdepth, phasercenter, phasersweep);
+//     chain.push(phaserFX);
+//   }
+
+//   // last gain
+//   const post = new GainNode(ac, { gain: postgain });
+//   chain.push(post);
+//   connectToDestination(post, channels);
+
+//   // delay
+//   let delaySend;
+//   if (delay > 0 && delaytime > 0 && delayfeedback > 0) {
+//     const delyNode = getDelay(orbit, delaytime, delayfeedback, t);
+//     delaySend = effectSend(post, delyNode, delay);
+//   }
+//   // reverb
+//   let reverbSend;
+//   if (room > 0) {
+//     let roomIR;
+//     if (ir !== undefined) {
+//       let url;
+//       let sample = getSound(ir);
+//       if (Array.isArray(sample)) {
+//         url = sample.data.samples[i % sample.data.samples.length];
+//       } else if (typeof sample === 'object') {
+//         url = Object.values(sample.data.samples).flat()[i % Object.values(sample.data.samples).length];
+//       }
+//       roomIR = await loadBuffer(url, ac, ir, 0);
+//     }
+//     const reverbNode = getReverb(orbit, roomsize, roomfade, roomlp, roomdim, roomIR);
+//     reverbSend = effectSend(post, reverbNode, room);
+//   }
+
+//   // analyser
+//   let analyserSend;
+//   if (analyze) {
+//     const analyserNode = getAnalyser(/* orbit,  */ 2 ** (fft + 5));
+//     analyserSend = effectSend(post, analyserNode, analyze);
+//   }
+
+//   // connect chain elements together
+//   chain.slice(1).reduce((last, current) => last.connect(current), chain[0]);
+
+//   // toDisconnect = all the node that should be disconnected in onended callback
+//   // this is crucial for performance
+//   toDisconnect = chain.concat([delaySend, reverbSend, analyserSend]);
+// };
 
 export const superdoughTrigger = (t, hap, ct, cps) => superdough(hap, t - ct, hap.duration / cps, cps);

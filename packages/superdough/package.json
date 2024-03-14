@@ -35,6 +35,7 @@
     "vite": "^5.0.10"
   },
   "dependencies": {
+    "glicol": "^0.4.0",
     "nanostores": "^0.9.5"
   }
 }

@@ -1,10 +1,10 @@
 use std::cmp;
 use std::ops::Sub;
 use std::sync::atomic::{AtomicI32, AtomicU8, Ordering};
-
-use wasm_bindgen::JsValue;
-// use log::{info, warn};
-use web_sys::console::log;
+use wasm_bindgen::prelude::*;
+// use wasm_bindgen::JsValue;
+// // use log::{info, warn};
+// use web_sys::console::log;
 
 pub fn poly_blep(p: f32, dt: &f32) -> f32 {
     let mut phase = p + 0.0;
@@ -111,7 +111,7 @@ impl Oscillator {
                 let new_value = curr_value + (v * gain_l);
                 if self.logged < 1 {
                     // unsafe { web_sys::console::log_1(&JsValue::from(cur_phase)) };
-                    unsafe { web_sys::console::log_1(&JsValue::from(gain_l)) };
+                    // unsafe { web_sys::console::log_1(&JsValue::from(gain_l)) };
                     // unsafe { web_sys::console::log_1(&JsValue::from(new_value)) };
                 }
 

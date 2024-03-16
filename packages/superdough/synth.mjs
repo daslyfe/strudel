@@ -29,8 +29,8 @@ export async function registerSynthSounds() {
     'waw',
     (begin, value, onended) => {
       const ac = getAudioContext();
-      let { duration, n, unison = 5, spread = 0.6, detune } = value;
-      detune = detune ?? n ?? 0.18;
+      let { duration } = value;
+
       const frequency = getFrequencyFromValue(value);
 
       const [attack, decay, sustain, release] = getADSRValues(
@@ -41,7 +41,6 @@ export async function registerSynthSounds() {
 
       const holdend = begin + duration;
       const end = holdend + release + 0.01;
-      const voices = clamp(unison, 1, 100);
 
       // let node = getWorklet(
       //   ac,
@@ -58,32 +57,25 @@ export async function registerSynthSounds() {
       //     outputChannelCount: [2],
       //   },
       // );
-      const envGain = gainNode(1);
+      let envGain = gainNode(1);
 
       return Oscillator.create(ac, {
         count: 999,
       }).then((node) => {
         const freq = node.get_param('Frequency');
         freq.value = frequency;
-        node = node.node().connect(envGain);
-        getParamADSR(node.gain, attack, decay, sustain, release, 0, 0.3, begin, holdend, 'linear');
-        return { node, stop: (time) => {} };
+        envGain = node.node().connect(envGain);
+
+        getParamADSR(envGain.gain, attack, decay, sustain, release, 0, 0.3, begin, holdend, 'linear');
+        return {
+          node: envGain,
+          stop: (time) => {
+            setTimeout(() => {
+              node.destroy();
+            }, 100);
+          },
+        };
       });
-      // const gainAdjustment = 1 / Math.sqrt(voices);
-      // getPitchEnvelope(node.parameters.get('detune'), value, begin, holdend);
-      // getVibratoOscillator(node.parameters.get('detune'), value, begin);
-      // applyFM(node.parameters.get('frequency'), value, begin);
-
-      // node = node.connect(envGain);
-
-      // getParamADSR(node.gain, attack, decay, sustain, release, 0, 0.3 * gainAdjustment, begin, holdend, 'linear');
-
-      // return {
-      //   node: t.node(),
-      //   stop: (time) => {
-      //     // o.stop(time);
-      //   },
-      // };
     },
     { prebake: true, type: 'synth' },
   );

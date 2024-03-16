@@ -1,0 +1,9 @@
+/Users/jaderowland/Documents/GitHub/strudel/packages/superdough/rs/target/wasm32-unknown-unknown/release/deps/libwasm_bindgen_futures-5e820fb36cf28778.rmeta: /Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/wasm-bindgen-futures-0.4.42/src/lib.rs /Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/wasm-bindgen-futures-0.4.42/src/queue.rs /Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/wasm-bindgen-futures-0.4.42/src/task/singlethread.rs
+
+/Users/jaderowland/Documents/GitHub/strudel/packages/superdough/rs/target/wasm32-unknown-unknown/release/deps/libwasm_bindgen_futures-5e820fb36cf28778.rlib: /Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/wasm-bindgen-futures-0.4.42/src/lib.rs /Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/wasm-bindgen-futures-0.4.42/src/queue.rs /Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/wasm-bindgen-futures-0.4.42/src/task/singlethread.rs
+
+/Users/jaderowland/Documents/GitHub/strudel/packages/superdough/rs/target/wasm32-unknown-unknown/release/deps/wasm_bindgen_futures-5e820fb36cf28778.d: /Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/wasm-bindgen-futures-0.4.42/src/lib.rs /Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/wasm-bindgen-futures-0.4.42/src/queue.rs /Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/wasm-bindgen-futures-0.4.42/src/task/singlethread.rs
+
+/Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/wasm-bindgen-futures-0.4.42/src/lib.rs:
+/Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/wasm-bindgen-futures-0.4.42/src/queue.rs:
+/Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/wasm-bindgen-futures-0.4.42/src/task/singlethread.rs:

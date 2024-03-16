@@ -1,1 +1,4 @@
-workspace = { members = ["wasm", "xtask"], default-members = ["xtask"] }
+
+[workspace]
+default-members = ["app"]
+members = ["app", "xtask"]

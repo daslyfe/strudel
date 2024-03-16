@@ -1,4 +1,6 @@
 import { clamp, midiToFreq, noteToMidi } from './util.mjs';
+import init, { init_worklet, Oscillator, Gain } from './rs/app/pkg/waw-demo';
+import worklet_url from './rs/app/pkg/waw-demo.worklet.js?url&worker';
 import { registerSound, getAudioContext, getWorklet } from './superdough.mjs';
 import { applyFM, gainNode, getADSRValues, getParamADSR, getPitchEnvelope, getVibratoOscillator } from './helpers.mjs';
 import { getNoiseMix, getNoiseOscillator } from './noise.mjs';
@@ -20,7 +22,72 @@ const getFrequencyFromValue = (value) => {
 const waveforms = ['triangle', 'square', 'sawtooth', 'sine'];
 const noises = ['pink', 'white', 'brown', 'crackle'];
 
-export function registerSynthSounds() {
+export async function registerSynthSounds() {
+  await init();
+  await init_worklet(getAudioContext(), worklet_url);
+  registerSound(
+    'waw',
+    (begin, value, onended) => {
+      const ac = getAudioContext();
+      let { duration, n, unison = 5, spread = 0.6, detune } = value;
+      detune = detune ?? n ?? 0.18;
+      const frequency = getFrequencyFromValue(value);
+
+      const [attack, decay, sustain, release] = getADSRValues(
+        [value.attack, value.decay, value.sustain, value.release],
+        'linear',
+        [0.001, 0.05, 0.6, 0.01],
+      );
+
+      const holdend = begin + duration;
+      const end = holdend + release + 0.01;
+      const voices = clamp(unison, 1, 100);
+
+      // let node = getWorklet(
+      //   ac,
+      //   'supersaw-oscillator',
+      //   {
+      //     frequency,
+      //     begin,
+      //     end,
+      //     freqspread: detune * 0.1,
+      //     voices,
+      //     panspread: clamp(spread, 0, 1),
+      //   },
+      //   {
+      //     outputChannelCount: [2],
+      //   },
+      // );
+      const envGain = gainNode(1);
+
+      return Oscillator.create(ac, {
+        count: 999,
+      }).then((node) => {
+        const freq = node.get_param('Frequency');
+        freq.value = frequency;
+        node = node.node().connect(envGain);
+        getParamADSR(node.gain, attack, decay, sustain, release, 0, 0.3, begin, holdend, 'linear');
+        return { node, stop: (time) => {} };
+      });
+      // const gainAdjustment = 1 / Math.sqrt(voices);
+      // getPitchEnvelope(node.parameters.get('detune'), value, begin, holdend);
+      // getVibratoOscillator(node.parameters.get('detune'), value, begin);
+      // applyFM(node.parameters.get('frequency'), value, begin);
+
+      // node = node.connect(envGain);
+
+      // getParamADSR(node.gain, attack, decay, sustain, release, 0, 0.3 * gainAdjustment, begin, holdend, 'linear');
+
+      // return {
+      //   node: t.node(),
+      //   stop: (time) => {
+      //     // o.stop(time);
+      //   },
+      // };
+    },
+    { prebake: true, type: 'synth' },
+  );
+
   [...waveforms].forEach((s) => {
     registerSound(
       s,

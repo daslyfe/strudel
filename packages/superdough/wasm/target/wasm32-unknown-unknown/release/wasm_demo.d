@@ -1,0 +1,1 @@
+/Users/jaderowland/Documents/GitHub/strudel/packages/superdough/wasm/target/wasm32-unknown-unknown/release/wasm_demo.wasm: /Users/jaderowland/Documents/GitHub/strudel/packages/superdough/wasm/src/lib.rs

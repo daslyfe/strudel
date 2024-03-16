@@ -20,7 +20,15 @@ const getFrequencyFromValue = (value) => {
 const waveforms = ['triangle', 'square', 'sawtooth', 'sine'];
 const noises = ['pink', 'white', 'brown', 'crackle'];
 
-export function registerSynthSounds() {
+export async function registerSynthSounds() {
+  // const wasm = await WebAssembly.compile(fs.readFileSync('./demo.wasm'));
+  // const instance = await WebAssembly.instantiate(wasm, importObject);
+
+  const url = new URL('./wasm/pkg/wasm_demo_bg.wasm', import.meta.url);
+  let res = await fetch(url);
+  const bin = await WebAssembly.compileStreaming(res);
+  const context = getAudioContext();
+  await context.audioWorklet.addModule(new URL('./wasm/www/processor.js', import.meta.url));
   [...waveforms].forEach((s) => {
     registerSound(
       s,
@@ -61,6 +69,60 @@ export function registerSynthSounds() {
     );
   });
   registerSound(
+    'wat',
+    (begin, value, onended) => {
+      const ac = getAudioContext();
+      let { duration, n, unison = 5, spread = 0.6, detune } = value;
+      detune = detune ?? n ?? 0.18;
+      const frequency = getFrequencyFromValue(value);
+
+      const [attack, decay, sustain, release] = getADSRValues(
+        [value.attack, value.decay, value.sustain, value.release],
+        'linear',
+        [0.001, 0.05, 0.6, 0.01],
+      );
+
+      const holdend = begin + duration;
+      const end = holdend + release + 0.01;
+      const voices = clamp(unison, 1, 100);
+
+      let node = getWorklet(
+        ac,
+        'web-synth-proto',
+        {
+          frequency,
+          begin,
+          end,
+        },
+        {
+          outputChannelCount: [2],
+        },
+      );
+
+      // let node = new AudioWorkletNode(ac, 'web-synth-proto');
+
+      node.port.postMessage({ type: 'init-wasm', wasmData: bin });
+      // node.port.postMessage({ type: 'freq-update', freq: 1000 });
+
+      // const gainAdjustment = 1 / Math.sqrt(voices);
+      // getPitchEnvelope(node.parameters.get('detune'), value, begin, holdend);
+      // getVibratoOscillator(node.parameters.get('detune'), value, begin);
+      // applyFM(node.parameters.get('frequency'), value, begin);
+      let envGain = gainNode(1);
+      node = node.connect(envGain);
+      // envGain = node.connect(envGain);
+
+      // getParamADSR(envGain.gain, attack, decay, sustain, release, 0, 0.3 * gainAdjustment, begin, holdend, 'linear');
+
+      return {
+        node,
+        stop: (time) => {},
+      };
+    },
+    { prebake: true, type: 'synth' },
+  );
+
+  registerSound(
     'supersaw',
     (begin, value, onended) => {
       const ac = getAudioContext();
@@ -97,16 +159,14 @@ export function registerSynthSounds() {
       getPitchEnvelope(node.parameters.get('detune'), value, begin, holdend);
       getVibratoOscillator(node.parameters.get('detune'), value, begin);
       applyFM(node.parameters.get('frequency'), value, begin);
-      const envGain = gainNode(1);
-      node = node.connect(envGain);
+      let envGain = gainNode(1);
+      envGain = node.connect(envGain);
 
-      getParamADSR(node.gain, attack, decay, sustain, release, 0, 0.3 * gainAdjustment, begin, holdend, 'linear');
+      getParamADSR(envGain.gain, attack, decay, sustain, release, 0, 0.3 * gainAdjustment, begin, holdend, 'linear');
 
       return {
-        node,
-        stop: (time) => {
-          // o.stop(time);
-        },
+        node: envGain,
+        stop: (time) => {},
       };
     },
     { prebake: true, type: 'synth' },

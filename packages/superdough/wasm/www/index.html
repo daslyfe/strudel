@@ -1,0 +1,42 @@
+<!-- 
+  This software generates a simple tone using WebAssembly and the Web Audio API.
+  Copyright (C) 2023  Andrew Luchuk
+  
+  This program is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+  
+  This program is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+  
+  You should have received a copy of the GNU General Public License
+  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ -->
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Hello wasm-pack!</title>
+    <style>
+      body {
+        background-color: rgb(58, 58, 58);
+        color: white;
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>This page contains webassembly and javascript content, please enable javascript in your browser.</noscript>
+    <script type="module" src="./index.js">
+    </script>
+    <button id="start-sound">Start Sound</button>
+    <button id="stop-sound">Stop Sound</button>
+    <label>
+      Frequency: 
+      <input type="number" value="440" id="frequency-input">
+    </label>
+  </body>
+</html>

@@ -1,0 +1,1 @@
+workspace = { members = ["wasm", "xtask"], default-members = ["xtask"] }

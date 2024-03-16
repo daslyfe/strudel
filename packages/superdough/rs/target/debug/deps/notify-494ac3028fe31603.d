@@ -1,0 +1,11 @@
+/Users/jaderowland/Documents/GitHub/strudel/packages/superdough/rs/target/debug/deps/libnotify-494ac3028fe31603.rmeta: /Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/notify-5.2.0/src/lib.rs /Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/notify-5.2.0/src/fsevent.rs /Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/notify-5.2.0/src/event.rs /Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/notify-5.2.0/src/null.rs /Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/notify-5.2.0/src/poll.rs /Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/notify-5.2.0/src/config.rs /Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/notify-5.2.0/src/error.rs
+
+/Users/jaderowland/Documents/GitHub/strudel/packages/superdough/rs/target/debug/deps/notify-494ac3028fe31603.d: /Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/notify-5.2.0/src/lib.rs /Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/notify-5.2.0/src/fsevent.rs /Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/notify-5.2.0/src/event.rs /Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/notify-5.2.0/src/null.rs /Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/notify-5.2.0/src/poll.rs /Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/notify-5.2.0/src/config.rs /Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/notify-5.2.0/src/error.rs
+
+/Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/notify-5.2.0/src/lib.rs:
+/Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/notify-5.2.0/src/fsevent.rs:
+/Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/notify-5.2.0/src/event.rs:
+/Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/notify-5.2.0/src/null.rs:
+/Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/notify-5.2.0/src/poll.rs:
+/Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/notify-5.2.0/src/config.rs:
+/Users/jaderowland/.cargo/registry/src/index.crates.io-6f17d22bba15001f/notify-5.2.0/src/error.rs:

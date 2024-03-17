@@ -154,9 +154,6 @@ const polyBlep = (phase, dt) => {
 };
 
 const saw = (phase, dt) => {
-  // Correct phase, so it would be in line with sin(2.*M_PI * phase)
-  phase += 0.5;
-  if (phase >= 1) phase -= 1;
   const v = 2 * phase - 1;
   return v - polyBlep(phase, dt);
 };
@@ -175,6 +172,7 @@ class SuperSawOscillatorProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
     this.phase = [];
+    this.increment = 0;
   }
   static get parameterDescriptors() {
     return [
@@ -257,21 +255,28 @@ class SuperSawOscillatorProcessor extends AudioWorkletProcessor {
       }
       // eslint-disable-next-line no-undef
       const dt = freq / sampleRate;
-
+      // let phaseOffset = Math.pow(freq, n);
+      let phaseOffset = freq * ((n + 1) * 100);
+      // let phaseOffset = freq * ((n + 1) * currentTime);
+      // phaseOffset = 0;
       for (let i = 0; i < output[0].length; i++) {
-        this.phase[n] = this.phase[n] ?? Math.random();
-        const v = saw(this.phase[n], dt);
+        // this.phase[n] = this.phase[n] ?? Math.random();
+        const inc = this.increment + phaseOffset + i;
+        const p = (inc * dt) % 1;
+        // const v = saw(this.phase[n], dt);
+        const v = saw(p, dt);
 
         output[0][i] = output[0][i] + v * gainL;
         output[1][i] = output[1][i] + v * gainR;
 
-        this.phase[n] += dt;
+        // this.phase[n] += dt;
 
-        if (this.phase[n] > 1.0) {
-          this.phase[n] = this.phase[n] - 1;
-        }
+        // if (this.phase[n] > 1.0) {
+        //   this.phase[n] = this.phase[n] - 1;
+        // }
       }
     }
+    this.increment += output[0].length;
     return true;
   }
 }

@@ -109,13 +109,13 @@ export async function registerSynthSounds() {
       // getVibratoOscillator(node.parameters.get('detune'), value, begin);
       // applyFM(node.parameters.get('frequency'), value, begin);
       let envGain = gainNode(1);
-      node = node.connect(envGain);
+      envGain = node.connect(envGain);
       // envGain = node.connect(envGain);
 
       // getParamADSR(envGain.gain, attack, decay, sustain, release, 0, 0.3 * gainAdjustment, begin, holdend, 'linear');
 
       return {
-        node,
+        node: envGain,
         stop: (time) => {},
       };
     },

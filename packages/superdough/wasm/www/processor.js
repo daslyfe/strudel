@@ -164,7 +164,7 @@ class WebSynthProcessor extends AudioWorkletProcessor {
     this.port.onmessage = (event) => this.onmessage(event.data);
 
     this.osc = null;
-
+    this.destroyed = false;
     this.pitch = 440;
   }
   static get parameterDescriptors() {
@@ -219,7 +219,11 @@ class WebSynthProcessor extends AudioWorkletProcessor {
     }
     // eslint-disable-next-line no-undef
     if (currentTime >= parameters.end[0]) {
-      this.osc.free();
+      if (this.destroyed === false) {
+        // this.osc.free();
+        this.destroyed = true;
+      }
+
       return false;
     }
     let frequency = parameters.frequency[0];

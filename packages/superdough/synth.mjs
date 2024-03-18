@@ -24,7 +24,11 @@ const fm = (osc, harmonicityRatio, modulationIndex, wave = 'sine') => {
 const waveforms = ['sine', 'square', 'triangle', 'sawtooth'];
 const noises = ['pink', 'white', 'brown', 'crackle'];
 
-export function registerSynthSounds() {
+export async function registerSynthSounds() {
+  const url = new URL('./wasm/pkg/wasm_demo_bg.wasm', import.meta.url);
+  let res = await fetch(url);
+  const bin = await WebAssembly.compileStreaming(res);
+
   [...waveforms, ...noises].forEach((s) => {
     registerSound(
       s,

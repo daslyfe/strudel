@@ -1,14 +1,16 @@
 let ac;
 document.getElementById('play').addEventListener('click', async () => {
+  console.log('hiisdasdasdi')
   ac = ac || new AudioContext();
   await ac.resume();
   await ac.audioWorklet.addModule('./worklet.js');
   const node = new AudioWorkletNode(ac, 'saw-processor');
 
+
   //let res = await fetch('./zigsaw/zigsaw.wasm');
   // let res = await fetch('./csaw/csaw.wasm');
-  // let res = await fetch('./ascsaw/build/release.wasm');
-  let res = await fetch('./rustsaw/pkg/rustsaw_bg.wasm');
+  let res = await fetch('./ascsaw/build/release.wasm');
+  // let res = await fetch('./rustsaw/pkg/rustsaw_bg.wasm');
   const buffer = await res.arrayBuffer();
   node.port.onmessage = (e) => {
     if (e.data === 'OK') {

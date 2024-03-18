@@ -231,8 +231,10 @@ class SuperSawOscillatorProcessor extends AudioWorkletProcessor {
       return false;
     }
     let frequency = params.frequency[0];
+
     //apply detune in cents
     frequency = frequency * Math.pow(2, params.detune[0] / 1200);
+    const dt = frequency / sampleRate;
 
     const output = outputs[0];
     const voices = params.voices[0];
@@ -253,30 +255,24 @@ class SuperSawOscillatorProcessor extends AudioWorkletProcessor {
         gainL = gain2;
         gainR = gain1;
       }
-      // eslint-disable-next-line no-undef
-      const dt = freq / sampleRate;
-      // let phaseOffset = Math.pow(freq, n);
-      let phaseOffset = freq * ((n + 1) * 100);
-      // let phaseOffset = freq * ((n + 1) * currentTime);
-      // phaseOffset = 0;
+
+      let phaseOffset = currentTime / (n + 1);
+
+      const vdt = freq / sampleRate;
+
+      const adjustedIncrement = (freq / frequency) * this.increment + phaseOffset;
+
       for (let i = 0; i < output[0].length; i++) {
-        // this.phase[n] = this.phase[n] ?? Math.random();
-        const inc = this.increment + phaseOffset + i;
-        const p = (inc * dt) % 1;
-        // const v = saw(this.phase[n], dt);
-        const v = saw(p, dt);
+        const inc = adjustedIncrement + i * vdt;
+        const p = inc % 1;
+
+        const v = saw(p, vdt);
 
         output[0][i] = output[0][i] + v * gainL;
         output[1][i] = output[1][i] + v * gainR;
-
-        // this.phase[n] += dt;
-
-        // if (this.phase[n] > 1.0) {
-        //   this.phase[n] = this.phase[n] - 1;
-        // }
       }
     }
-    this.increment += output[0].length;
+    this.increment = this.increment + output[0].length * dt;
     return true;
   }
 }

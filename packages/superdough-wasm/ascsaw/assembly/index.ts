@@ -1,9 +1,9 @@
 // export function saw(t: number, f: number): number {
 //   return (((f * t * 1.0) % 1.0) - 0.5) * 2.0;
 // }
-type out = Array<number>;
+type out = Float32Array;
 
-type output = Array<out>;
+type output = Array<Float32Array>;
 
 const polyBlep = (phase: number, dt: number): number => {
   // 0 <= phase < 1
@@ -79,8 +79,8 @@ export function proc(
 
       const v = saw(p, vdt);
 
-      output[0][i] = output[0][i] + v * gainL;
-      output[1][i] = output[1][i] + v * gainR;
+      output[0][i] = (output[0][i] + v * gainL) as f32;
+      output[1][i] = (output[1][i] + v * gainR) as f32;
     }
   }
   return output;

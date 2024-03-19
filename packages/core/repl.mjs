@@ -172,6 +172,7 @@ export const getTrigger =
         await hap.context.onTrigger(getTime() + deadline, hap, getTime(), cps);
       }
     } catch (err) {
-      logger(`[cyclist] error: ${err.message}`, 'error');
+      console.log(err);
+      // logger(`[cyclist] error: ${err.message}`, 'error');
     }
   };

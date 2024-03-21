@@ -165,21 +165,26 @@ const saw = (phase, dt) => {
 };
 
 const sine = (phase, dt) => {
-  return Math.sin(phase);
+  return Math.sin(Math.PI * 2 * phase);
+  // return Math.sin(phase);
 };
 
 const decayEnvelope = (startTime, endTime, currentTime, curve) => {
+  let min = 0.001;
   if (startTime > currentTime) {
     return 1;
   }
   if (currentTime > endTime) {
-    return 0;
+    return min;
   }
+  currentTime = currentTime - startTime;
+  endTime = endTime - startTime;
+  startTime = 0;
 
   let x1 = startTime;
   let y1 = 1;
   let x2 = endTime;
-  let y2 = 0.001;
+  let y2 = min;
 
   // Calculate the growth or decay rate (b)
 
@@ -190,6 +195,8 @@ const decayEnvelope = (startTime, endTime, currentTime, curve) => {
 
   // Use the function to calculate y for any x
   let x = currentTime;
+
+  // console.log(a * Math.exp(b * x), a, b, x);
   return a * Math.exp(b * x);
 };
 
@@ -305,7 +312,7 @@ registerProcessor('supersaw-oscillator', SuperSawOscillatorProcessor);
 class KickProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
-    this.phase = 0;
+    this.phase = 0.51;
   }
 
   static get parameterDescriptors() {
@@ -331,17 +338,17 @@ class KickProcessor extends AudioWorkletProcessor {
       },
       {
         name: 'envamount',
-        defaultValue: 0.5,
+        defaultValue: 36,
         min: Number.EPSILON,
       },
       {
         name: 'decay',
-        defaultValue: 0.5,
+        defaultValue: 1,
         min: 0,
       },
       {
         name: 'impulseamount',
-        defaultValue: 0.5,
+        defaultValue: 0.4,
         min: 0,
       },
     ];
@@ -356,6 +363,9 @@ class KickProcessor extends AudioWorkletProcessor {
     const output = outputs[0];
     const begin = params.begin[0];
     const end = params.end[0];
+    const envamount = params.envamount[0];
+    const impulseamount = params.impulseamount[0];
+
     // eslint-disable-next-line no-undef
     if (currentTime <= begin) {
       return true;
@@ -364,8 +374,13 @@ class KickProcessor extends AudioWorkletProcessor {
     if (currentTime >= end) {
       return false;
     }
-    const frequency = params.frequency[0];
+    let frequency = params.frequency[0];
+
+    let freqdec = decayEnvelope(begin, begin + 0.1, currentTime);
+    frequency = frequency * Math.pow(2, (freqdec * envamount) / 12);
+
     const decay = params.decay[0];
+    const dec = decayEnvelope(begin, begin + decay, currentTime);
     // eslint-disable-next-line no-undef
     const dt = frequency / sampleRate;
 
@@ -373,14 +388,16 @@ class KickProcessor extends AudioWorkletProcessor {
       const outputChannel = output[channel];
 
       for (let i = 0; i < outputChannel.length; ++i) {
-        this.phase = this.phase ?? Math.random();
-
         // Implement the generate() logic here
         const v = sine(this.phase, dt);
         // Access the generated audio and sync signals
-        const audioOut = v * decayEnvelope(begin, begin + decay, currentTime);
-
+        let audioOut = v * dec;
+        // const audioOut = v;
         // Set the output values
+        if (currentTime < begin + 0.01) {
+          const x = Math.pow(2, 6 - 1);
+          audioOut = audioOut * (1 - impulseamount) + (Math.round(audioOut * x) / x) * impulseamount;
+        }
         outputChannel[i] = audioOut;
         this.incrementPhase(dt);
       }

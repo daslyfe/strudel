@@ -166,6 +166,7 @@ const saw = (phase, dt) => {
 
 const sine = (phase, dt) => {
   return Math.sin(Math.PI * 2 * phase);
+
   // return Math.sin(phase);
 };
 
@@ -199,6 +200,19 @@ const decayEnvelope = (startTime, endTime, currentTime, curve) => {
   // console.log(a * Math.exp(b * x), a, b, x);
   return a * Math.exp(b * x);
 };
+
+function decay2(time, decayRate, curve, hold = 0) {
+  const min = 0.001;
+  // const numSamples = durationInSeconds * sampleRate;
+  // const envelope = new Float32Array(numSamples);
+
+  // Calculate volume at this time using exponential decay formula: V(t) = V0 * e^(-rt)
+  if (time < hold) {
+    return 1;
+  }
+  return 1 * Math.pow(curve, -decayRate * (time - hold));
+  // return 1 * Math.exp(-decayRate * time);
+}
 
 class SuperSawOscillatorProcessor extends AudioWorkletProcessor {
   constructor() {
@@ -312,7 +326,9 @@ registerProcessor('supersaw-oscillator', SuperSawOscillatorProcessor);
 class KickProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
-    this.phase = 0.51;
+    this.phase = 0.5;
+    this.inc = 0;
+    // this.ampEnv = new Float32Array(numSamples);
   }
 
   static get parameterDescriptors() {
@@ -343,7 +359,7 @@ class KickProcessor extends AudioWorkletProcessor {
       },
       {
         name: 'decay',
-        defaultValue: 1,
+        defaultValue: 4,
         min: 0,
       },
       {
@@ -367,39 +383,48 @@ class KickProcessor extends AudioWorkletProcessor {
     const impulseamount = params.impulseamount[0];
 
     // eslint-disable-next-line no-undef
-    if (currentTime <= begin) {
+    if (currentTime < begin) {
       return true;
     }
     // eslint-disable-next-line no-undef
-    if (currentTime >= end) {
+    if (currentTime > end) {
       return false;
     }
-    let frequency = params.frequency[0];
+    // let frequency = params.frequency[0];
 
-    let freqdec = decayEnvelope(begin, begin + 0.1, currentTime);
-    frequency = frequency * Math.pow(2, (freqdec * envamount) / 12);
+    // let freqdec = decayEnvelope(begin, begin + 0.1, currentTime);
 
     const decay = params.decay[0];
-    const dec = decayEnvelope(begin, begin + decay, currentTime);
+
+    // console.log(dec, { begin, t, decay, currentTime });
     // eslint-disable-next-line no-undef
-    const dt = frequency / sampleRate;
 
     for (let channel = 0; channel < output.length; ++channel) {
       const outputChannel = output[channel];
 
       for (let i = 0; i < outputChannel.length; ++i) {
+        const t = this.inc / sampleRate;
+        let freqdec = decay2(t, 20, Math.E);
+        let frequency = params.frequency[0] * Math.pow(2, (freqdec * envamount) / 12);
+        const dt = frequency / sampleRate;
+        let shelldec = decay2(t, 40, 20);
+        const shell = clamp(sine(this.phase / 8, dt), 0, 1) * shelldec * 0.24;
         // Implement the generate() logic here
-        const v = sine(this.phase, dt);
+
+        // const dec = decayEnvelope(0, decay, t);
+
         // Access the generated audio and sync signals
-        let audioOut = v * dec;
+        let audioOut = sine(this.phase, dt) * decay2(t, decay, 12, 0.05);
         // const audioOut = v;
         // Set the output values
-        if (currentTime < begin + 0.01) {
+        if (currentTime < begin + 0.03) {
           const x = Math.pow(2, 6 - 1);
           audioOut = audioOut * (1 - impulseamount) + (Math.round(audioOut * x) / x) * impulseamount;
         }
+        audioOut = shell + audioOut;
         outputChannel[i] = audioOut;
         this.incrementPhase(dt);
+        this.inc += 1;
       }
     }
 

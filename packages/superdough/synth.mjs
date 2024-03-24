@@ -1,6 +1,14 @@
 import { clamp, midiToFreq, noteToMidi } from './util.mjs';
 import { registerSound, getAudioContext, getWorklet } from './superdough.mjs';
-import { applyFM, gainNode, getADSRValues, getParamADSR, getPitchEnvelope, getVibratoOscillator } from './helpers.mjs';
+import {
+  applyFM,
+  gainNode,
+  getADSRValues,
+  getParamADSR,
+  getPitchEnvelope,
+  getVibratoOscillator,
+  webAudioTimeout,
+} from './helpers.mjs';
 import { getNoiseMix, getNoiseOscillator } from './noise.mjs';
 
 const getFrequencyFromValue = (value) => {
@@ -112,8 +120,8 @@ export function registerSynthSounds() {
     'supersaw',
     (begin, value, onended) => {
       const ac = getAudioContext();
-      let { duration, n, unison = 6, spread = 0.3, detune } = value;
-      detune = detune ?? n ?? 2;
+      let { duration, n, unison = 5, spread = 0.6, detune } = value;
+      detune = detune ?? n ?? 0.18;
       const frequency = getFrequencyFromValue(value);
 
       const [attack, decay, sustain, release] = getADSRValues(
@@ -125,37 +133,48 @@ export function registerSynthSounds() {
       const holdend = begin + duration;
       const end = holdend + release + 0.01;
       const voices = clamp(unison, 1, 100);
-
-      let node = getWorklet(
+      let panspread = voices > 1 ? clamp(spread, 0, 1) : 0;
+      let o = getWorklet(
         ac,
         'supersaw-oscillator',
         {
           frequency,
           begin,
           end,
-          freqspread: detune * 0.1,
+          freqspread: detune,
           voices,
-          panspread: clamp(spread, 0, 1),
+          panspread,
         },
         {
           outputChannelCount: [2],
         },
       );
-      const gainAdjustment = 1 / Math.sqrt(voices);
-      // console.log(node.parameters.get('frequency'));
-      getPitchEnvelope(node.parameters.get('detune'), value, begin, holdend);
-      getVibratoOscillator(node.parameters.get('detune'), value, begin);
-      applyFM(node.parameters.get('frequency'), value, begin);
-      const envGain = gainNode(1);
-      node = node.connect(envGain);
 
-      getParamADSR(node.gain, attack, decay, sustain, release, 0, 0.3 * gainAdjustment, begin, holdend, 'linear');
+      const gainAdjustment = 1 / Math.sqrt(voices);
+      getPitchEnvelope(o.parameters.get('detune'), value, begin, holdend);
+      const vibratoOscillator = getVibratoOscillator(o.parameters.get('detune'), value, begin);
+      const fm = applyFM(o.parameters.get('frequency'), value, begin);
+      let envGain = gainNode(1);
+      envGain = o.connect(envGain);
+
+      webAudioTimeout(
+        ac,
+        () => {
+          o.disconnect();
+          envGain.disconnect();
+          onended();
+          fm?.stop();
+          vibratoOscillator?.stop();
+        },
+        begin,
+        end,
+      );
+
+      getParamADSR(envGain.gain, attack, decay, sustain, release, 0, 0.3 * gainAdjustment, begin, holdend, 'linear');
 
       return {
-        node,
-        stop: (time) => {
-          // o.stop(time);
-        },
+        node: envGain,
+        stop: (time) => {},
       };
     },
     { prebake: true, type: 'synth' },

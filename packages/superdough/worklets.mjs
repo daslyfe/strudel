@@ -293,14 +293,17 @@ const sine = (phase, dt) => {
   // return Math.sin(phase);
 };
 
-const decayEnvelope = (startTime, endTime, currentTime, curve) => {
+// set the decay between an exact timespan
+const expDecayEnvelope = (startTime, endTime, currentTime, hold = 0) => {
   let min = 0.001;
+  currentTime = currentTime - hold;
   if (startTime > currentTime) {
     return 1;
   }
   if (currentTime > endTime) {
     return min;
   }
+  // change relative start time to 0 to prevent numeric overflow
   currentTime = currentTime - startTime;
   endTime = endTime - startTime;
   startTime = 0;
@@ -311,28 +314,22 @@ const decayEnvelope = (startTime, endTime, currentTime, curve) => {
   let y2 = min;
 
   // Calculate the growth or decay rate (b)
-
   let b = Math.log(y1 / y2) / (x1 - x2);
 
   // Calculate the initial value (a)
   let a = y1 / Math.exp(b * x1);
 
-  // Use the function to calculate y for any x
   let x = currentTime;
-
-  // console.log(a * Math.exp(b * x), a, b, x);
+  //  calculate y for any x
   return a * Math.exp(b * x);
 };
 
-function decay2(time, decayRate, curve, hold = 0) {
-  const min = 0.001;
-  // const numSamples = durationInSeconds * sampleRate;
-  // const envelope = new Float32Array(numSamples);
-
-  // Calculate volume at this time using exponential decay formula: V(t) = V0 * e^(-rt)
+function simpleDecayEnvelope(time, decayRate, curve, hold = 0) {
+  decayRate = (1 - decayRate) * 100;
   if (time < hold) {
     return 1;
   }
+  // Calculate volume at this time using exponential decay formula: V(t) = V0 * e^(-rt)
   return 1 * Math.pow(curve, -decayRate * (time - hold));
   // return 1 * Math.exp(-decayRate * time);
 }
@@ -367,18 +364,34 @@ class KickProcessor extends AudioWorkletProcessor {
         min: Number.EPSILON,
       },
       {
+        name: 'frequencydecay',
+        defaultValue: 0.2,
+        min: Number.EPSILON,
+      },
+      {
         name: 'envamount',
         defaultValue: 36,
         min: Number.EPSILON,
       },
       {
         name: 'decay',
-        defaultValue: 4,
+        defaultValue: 1,
         min: 0,
       },
       {
         name: 'impulseamount',
-        defaultValue: 0.4,
+        defaultValue: 1,
+        min: 0,
+      },
+      {
+        name: 'shellvol',
+        defaultValue: 1,
+        min: 0,
+      },
+
+      {
+        name: 'shelldec',
+        defaultValue: 0.2,
         min: 0,
       },
     ];
@@ -406,9 +419,9 @@ class KickProcessor extends AudioWorkletProcessor {
     }
     // let frequency = params.frequency[0];
 
-    // let freqdec = decayEnvelope(begin, begin + 0.1, currentTime);
+    // let freqdec = expDecayEnvelope(begin, begin + 0.1, currentTime);
 
-    const decay = params.decay[0];
+    const decay = Math.max(0.01, params.decay[0]);
 
     // console.log(dec, { begin, t, decay, currentTime });
     // eslint-disable-next-line no-undef
@@ -418,24 +431,29 @@ class KickProcessor extends AudioWorkletProcessor {
 
       for (let i = 0; i < outputChannel.length; ++i) {
         const t = this.inc / sampleRate;
-        let freqdec = decay2(t, 20, Math.E);
-        let frequency = params.frequency[0] * Math.pow(2, (freqdec * envamount) / 12);
+        let freqdec = expDecayEnvelope(0, params.frequencydecay[0], t);
+        let frequency = params.frequency[0] * 0.5 * Math.pow(2, (freqdec * envamount) / 12);
         const dt = frequency / sampleRate;
-        let shelldec = decay2(t, 40, 20);
-        const shell = clamp(sine(this.phase / 8, dt), 0, 1) * shelldec * 0.24;
+        let shelldec = expDecayEnvelope(0, params.shelldec[0], t);
+        // let shelldec = simpleDecayEnvelope(t, 0.8, 10);
+
         // Implement the generate() logic here
 
-        // const dec = decayEnvelope(0, decay, t);
+        // const dec = expDecayEnvelope(0, decay, t);
 
         // Access the generated audio and sync signals
-        let audioOut = sine(this.phase, dt) * decay2(t, decay, 12, 0.05);
+        let audioOut = sine(this.phase, dt) * expDecayEnvelope(0, decay, t, 0.05);
+        const shell = audioOut * (sine(this.phase / 4, dt) * shelldec) * params.shellvol[0];
+
         // const audioOut = v;
         // Set the output values
-        if (currentTime < begin + 0.03) {
+        audioOut = shell + audioOut;
+        if (currentTime < begin + 0.01) {
           const x = Math.pow(2, 6 - 1);
           audioOut = audioOut * (1 - impulseamount) + (Math.round(audioOut * x) / x) * impulseamount;
         }
-        audioOut = shell + audioOut;
+
+        // audioOut = shell;
         outputChannel[i] = audioOut;
         this.incrementPhase(dt);
         this.inc += 1;

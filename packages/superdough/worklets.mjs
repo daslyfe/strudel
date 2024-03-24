@@ -174,7 +174,7 @@ function getUnisonDetune(unison, detune, voiceIndex) {
 class SuperSawOscillatorProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
-    this.phase = [];
+    this.phase;
   }
   static get parameterDescriptors() {
     return [
@@ -232,6 +232,7 @@ class SuperSawOscillatorProcessor extends AudioWorkletProcessor {
       // this.port.postMessage({ type: 'onended' });
       return false;
     }
+
     let frequency = params.frequency[0];
     //apply detune in cents
     frequency = frequency * Math.pow(2, params.detune[0] / 1200);
@@ -242,6 +243,14 @@ class SuperSawOscillatorProcessor extends AudioWorkletProcessor {
     const panspread = params.panspread[0] * 0.5 + 0.5;
     const gain1 = Math.sqrt(1 - panspread);
     const gain2 = Math.sqrt(panspread);
+
+    if (this.phase == null) {
+      const iterable = (function* () {
+        yield* Array.from({ length: voices }, () => Math.random());
+      })();
+      // const float32FromIterable = new Float32Array(iterable);
+      this.phase = new Float32Array(iterable);
+    }
 
     for (let n = 0; n < voices; n++) {
       const isOdd = (n & 1) == 1;

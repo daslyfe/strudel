@@ -164,56 +164,6 @@ const saw = (phase, dt) => {
   return v - polyBlep(phase, dt);
 };
 
-const sine = (phase, dt) => {
-  return Math.sin(Math.PI * 2 * phase);
-
-  // return Math.sin(phase);
-};
-
-const decayEnvelope = (startTime, endTime, currentTime, curve) => {
-  let min = 0.001;
-  if (startTime > currentTime) {
-    return 1;
-  }
-  if (currentTime > endTime) {
-    return min;
-  }
-  currentTime = currentTime - startTime;
-  endTime = endTime - startTime;
-  startTime = 0;
-
-  let x1 = startTime;
-  let y1 = 1;
-  let x2 = endTime;
-  let y2 = min;
-
-  // Calculate the growth or decay rate (b)
-
-  let b = Math.log(y1 / y2) / (x1 - x2);
-
-  // Calculate the initial value (a)
-  let a = y1 / Math.exp(b * x1);
-
-  // Use the function to calculate y for any x
-  let x = currentTime;
-
-  // console.log(a * Math.exp(b * x), a, b, x);
-  return a * Math.exp(b * x);
-};
-
-function decay2(time, decayRate, curve, hold = 0) {
-  const min = 0.001;
-  // const numSamples = durationInSeconds * sampleRate;
-  // const envelope = new Float32Array(numSamples);
-
-  // Calculate volume at this time using exponential decay formula: V(t) = V0 * e^(-rt)
-  if (time < hold) {
-    return 1;
-  }
-  return 1 * Math.pow(curve, -decayRate * (time - hold));
-  // return 1 * Math.exp(-decayRate * time);
-}
-
 class SuperSawOscillatorProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
@@ -322,6 +272,56 @@ class SuperSawOscillatorProcessor extends AudioWorkletProcessor {
 }
 
 registerProcessor('supersaw-oscillator', SuperSawOscillatorProcessor);
+
+const sine = (phase, dt) => {
+  return Math.sin(Math.PI * 2 * phase);
+
+  // return Math.sin(phase);
+};
+
+const decayEnvelope = (startTime, endTime, currentTime, curve) => {
+  let min = 0.001;
+  if (startTime > currentTime) {
+    return 1;
+  }
+  if (currentTime > endTime) {
+    return min;
+  }
+  currentTime = currentTime - startTime;
+  endTime = endTime - startTime;
+  startTime = 0;
+
+  let x1 = startTime;
+  let y1 = 1;
+  let x2 = endTime;
+  let y2 = min;
+
+  // Calculate the growth or decay rate (b)
+
+  let b = Math.log(y1 / y2) / (x1 - x2);
+
+  // Calculate the initial value (a)
+  let a = y1 / Math.exp(b * x1);
+
+  // Use the function to calculate y for any x
+  let x = currentTime;
+
+  // console.log(a * Math.exp(b * x), a, b, x);
+  return a * Math.exp(b * x);
+};
+
+function decay2(time, decayRate, curve, hold = 0) {
+  const min = 0.001;
+  // const numSamples = durationInSeconds * sampleRate;
+  // const envelope = new Float32Array(numSamples);
+
+  // Calculate volume at this time using exponential decay formula: V(t) = V0 * e^(-rt)
+  if (time < hold) {
+    return 1;
+  }
+  return 1 * Math.pow(curve, -decayRate * (time - hold));
+  // return 1 * Math.exp(-decayRate * time);
+}
 
 class KickProcessor extends AudioWorkletProcessor {
   constructor() {

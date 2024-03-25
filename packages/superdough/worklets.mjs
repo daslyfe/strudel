@@ -357,41 +357,55 @@ class KickProcessor extends AudioWorkletProcessor {
         max: Number.POSITIVE_INFINITY,
         min: 0,
       },
-
-      {
-        name: 'frequency',
-        defaultValue: 440,
-        min: Number.EPSILON,
-      },
-      {
-        name: 'frequencydecay',
-        defaultValue: 0.2,
-        min: Number.EPSILON,
-      },
-      {
-        name: 'envamount',
-        defaultValue: 36,
-        min: Number.EPSILON,
-      },
-      {
-        name: 'decay',
-        defaultValue: 1,
-        min: 0,
-      },
-      {
-        name: 'impulseamount',
-        defaultValue: 1,
-        min: 0,
-      },
       {
         name: 'shellvol',
         defaultValue: 1,
         min: 0,
       },
+      {
+        name: 'shellfrequency',
+        defaultValue: 440,
+        min: 1,
+      },
+      {
+        name: 'shellfdecay',
+        defaultValue: 0.2,
+        min: Number.EPSILON,
+      },
+      {
+        name: 'shellfenv',
+        defaultValue: 36,
+        min: Number.EPSILON,
+      },
+      {
+        name: 'power',
+        defaultValue: 0.05,
+        min: 0,
+      },
+      {
+        name: 'decay',
+        defaultValue: 0.8,
+        min: 0,
+      },
+      {
+        name: 'impulsevol',
+        defaultValue: 1,
+        min: 0,
+      },
+      {
+        name: 'impulselength',
+        defaultValue: 0.01,
+        min: 0,
+      },
+      {
+        name: 'impactvol',
+        defaultValue: 1,
+        min: 0,
+      },
 
       {
-        name: 'shelldec',
-        defaultValue: 0.2,
+        name: 'impactdec',
+        defaultValue: 0.18,
         min: 0,
       },
     ];
@@ -406,8 +420,9 @@ class KickProcessor extends AudioWorkletProcessor {
     const output = outputs[0];
     const begin = params.begin[0];
     const end = params.end[0];
-    const envamount = params.envamount[0];
-    const impulseamount = params.impulseamount[0];
+    const shellfenv = params.shellfenv[0];
+    const impulsevol = params.impulsevol[0];
+    const impulselength = params.impulselength[0];
 
     // eslint-disable-next-line no-undef
     if (currentTime < begin) {
@@ -417,7 +432,7 @@ class KickProcessor extends AudioWorkletProcessor {
     if (currentTime > end) {
       return false;
     }
-    // let frequency = params.frequency[0];
+    // let shellfrequency = params.shellfrequency[0];
 
     // let freqdec = expDecayEnvelope(begin, begin + 0.1, currentTime);
 
@@ -431,29 +446,33 @@ class KickProcessor extends AudioWorkletProcessor {
 
       for (let i = 0; i < outputChannel.length; ++i) {
         const t = this.inc / sampleRate;
-        let freqdec = expDecayEnvelope(0, params.frequencydecay[0], t);
-        let frequency = params.frequency[0] * 0.5 * Math.pow(2, (freqdec * envamount) / 12);
-        const dt = frequency / sampleRate;
-        let shelldec = expDecayEnvelope(0, params.shelldec[0], t);
-        // let shelldec = simpleDecayEnvelope(t, 0.8, 10);
+        let freqdec = expDecayEnvelope(0, params.shellfdecay[0], t);
+        let shellfrequency = params.shellfrequency[0] * 0.5 * Math.pow(2, (freqdec * shellfenv) / 12);
+        const dt = shellfrequency / sampleRate;
+        let impactdec = expDecayEnvelope(0, params.impactdec[0], t);
+        // let impactdec = simpleDecayEnvelope(t, 0.8, 10);
 
         // Implement the generate() logic here
 
         // const dec = expDecayEnvelope(0, decay, t);
 
         // Access the generated audio and sync signals
-        let audioOut = sine(this.phase, dt) * expDecayEnvelope(0, decay, t, 0.05);
-        const shell = audioOut * (sine(this.phase / 4, dt) * shelldec) * params.shellvol[0];
+        let audioOut = sine(this.phase, dt) * expDecayEnvelope(0, decay, t, params.power[0]);
+
+        // frequency modulate the output with a phase shifted burst to create a "knocking" sound
+        const impact = audioOut * (sine(this.phase / 4, dt) * impactdec) * params.impactvol[0];
 
         // const audioOut = v;
         // Set the output values
-        audioOut = shell + audioOut;
-        if (currentTime < begin + 0.01) {
-          const x = Math.pow(2, 6 - 1);
-          audioOut = audioOut * (1 - impulseamount) + (Math.round(audioOut * x) / x) * impulseamount;
+        audioOut = impact + audioOut * params.shellvol[0];
+        // short bit crush effect creates a natural sounding impulse
+
+        if (t < impulselength) {
+          // const x = Math.pow(2, 6 - 1);
+          audioOut = audioOut * (1 - impulsevol) + (Math.round(audioOut * 32) / 32) * impulsevol;
         }
 
-        // audioOut = shell;
+        // audioOut = impact;
         outputChannel[i] = audioOut;
         this.incrementPhase(dt);
         this.inc += 1;

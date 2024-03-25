@@ -25,6 +25,31 @@ const getFrequencyFromValue = (value) => {
   return Number(freq);
 };
 
+const synthKickPresets = [
+  {
+    impulsevol: 1,
+    shellvol: 1,
+    shellfdecay: 0.2,
+    shellfenv: 36,
+    power: 0.05,
+    decay: 0.8,
+    impulselength: 0.01,
+    impactvol: 1,
+    impactdec: 0.18,
+  },
+  {
+    shellvol: 0,
+    shellfdecay: 0.2,
+    shellfenv: 38,
+    power: 0.2,
+    decay: 0.8,
+    impulsevol: 2,
+    impulselength: 0.01,
+    impactvol: 2,
+    impactdec: 0.5,
+  },
+];
+
 const waveforms = ['triangle', 'square', 'sawtooth', 'sine'];
 const noises = ['pink', 'white', 'brown', 'crackle'];
 const drums = ['kick'];
@@ -73,16 +98,19 @@ export function registerSynthSounds() {
   registerSound(
     'kick',
     (begin, value, onended) => {
+      const { n = 0 } = value;
+      const preset = synthKickPresets[n];
+      const { decay = preset.decay, release = 0 } = value;
       const ac = getAudioContext();
       let { duration } = value;
 
       const frequency = getFrequencyFromValue(value);
 
-      const [attack, decay, sustain, release] = getADSRValues(
-        [value.attack, value.decay, value.sustain, value.release],
-        'linear',
-        [0.001, 0.05, 0.6, 0.01],
-      );
+      // const [attack, decay, sustain, release] = getADSRValues(
+      //   [value.attack, value.decay, value.sustain, value.release],
+      //   'linear',
+      //   [0.001, 0.05, 0.6, 0.01],
+      // );
 
       const holdend = begin + duration;
       const end = holdend + release + 0.01;
@@ -91,9 +119,11 @@ export function registerSynthSounds() {
         ac,
         'kick-processor',
         {
-          frequency,
+          shellfrequency: frequency,
           begin,
           end,
+          ...preset,
+          decay,
         },
         {
           outputChannelCount: [1],

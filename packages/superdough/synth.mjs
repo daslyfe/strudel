@@ -1,4 +1,4 @@
-import { clamp, midiToFreq, noteToMidi } from './util.mjs';
+import { clamp, midiToFreq, noteToMidi, _mod } from './util.mjs';
 import { registerSound, getAudioContext, getWorklet } from './superdough.mjs';
 import {
   applyFM,
@@ -45,8 +45,20 @@ const synthKickPresets = [
     decay: 0.8,
     impulsevol: 2,
     impulselength: 0.01,
-    impactvol: 2,
+    impactvol: 2.5,
     impactdec: 0.5,
+  },
+  {
+    impulsevol: 1,
+    shellvol: 1,
+    shellfdecay: 0.1,
+    shellfenv: 36,
+    power: 0.1,
+    decay: 0.2,
+    impulselength: 0.03,
+    impactvol: 2,
+    impactdec: 0.1,
+    impulsecolor: 0.6,
   },
 ];
 
@@ -99,18 +111,12 @@ export function registerSynthSounds() {
     'kick',
     (begin, value, onended) => {
       const { n = 0 } = value;
-      const preset = synthKickPresets[n];
+      const preset = synthKickPresets[_mod(n, synthKickPresets.length)];
       const { decay = preset.decay, release = 0 } = value;
       const ac = getAudioContext();
       let { duration } = value;
 
       const frequency = getFrequencyFromValue(value);
-
-      // const [attack, decay, sustain, release] = getADSRValues(
-      //   [value.attack, value.decay, value.sustain, value.release],
-      //   'linear',
-      //   [0.001, 0.05, 0.6, 0.01],
-      // );
 
       const holdend = begin + duration;
       const end = holdend + release + 0.01;
@@ -134,7 +140,7 @@ export function registerSynthSounds() {
       const envGain = gainNode(1);
       node = node.connect(envGain);
 
-      getParamADSR(node.gain, attack, decay, sustain, release, 0, 0.3, begin, holdend, 'linear');
+      getParamADSR(node.gain, 0, decay, 0, release, 0, 0.3, begin, holdend, 'linear');
 
       return {
         node,

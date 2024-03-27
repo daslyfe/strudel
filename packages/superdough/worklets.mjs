@@ -398,6 +398,11 @@ class KickProcessor extends AudioWorkletProcessor {
         min: 0,
       },
       {
+        name: 'impulsecolor',
+        defaultValue: 0.32,
+        min: 0,
+      },
+      {
         name: 'impactvol',
         defaultValue: 1,
         min: 0,
@@ -423,6 +428,7 @@ class KickProcessor extends AudioWorkletProcessor {
     const shellfenv = params.shellfenv[0];
     const impulsevol = params.impulsevol[0];
     const impulselength = params.impulselength[0];
+    const impulsecolor = params.impulsecolor[0] * 100;
 
     // eslint-disable-next-line no-undef
     if (currentTime < begin) {
@@ -469,7 +475,7 @@ class KickProcessor extends AudioWorkletProcessor {
 
         if (t < impulselength) {
           // const x = Math.pow(2, 6 - 1);
-          audioOut = audioOut * (1 - impulsevol) + (Math.round(audioOut * 32) / 32) * impulsevol;
+          audioOut = audioOut * (1 - impulsevol) + (Math.round(audioOut * impulsecolor) / impulsecolor) * impulsevol;
         }
 
         // audioOut = impact;

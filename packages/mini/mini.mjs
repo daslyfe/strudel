@@ -246,6 +246,8 @@ export const mini = (...strings) => {
 export const m = (str, offset) => {
   const code = `"${str}"`;
   const ast = mini2ast(code);
+  const pat = patternifyAST(ast, code, null, offset);
+
   return patternifyAST(ast, code, null, offset);
 };
 

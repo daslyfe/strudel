@@ -269,6 +269,12 @@ export async function onTriggerSample(t, value, onended, bank, resolveUrl) {
     // no playback
     return;
   }
+  let soundIndex = n;
+  let gain = 1;
+  if (Array.isArray(n)) {
+    soundIndex = n[0];
+    gain = n[1];
+  }
   loop = s.startsWith('wt_') ? 1 : value.loop;
   const ac = getAudioContext();
   // destructure adsr here, because the default should be different for synths and samples
@@ -277,19 +283,19 @@ export async function onTriggerSample(t, value, onended, bank, resolveUrl) {
   //const soundfont = getSoundfontKey(s);
   const time = t + nudge;
 
-  const bufferSource = await getSampleBufferSource(s, n, note, speed, freq, bank, resolveUrl);
+  const bufferSource = await getSampleBufferSource(s, soundIndex, note, speed, freq, bank, resolveUrl);
 
   // vibrato
   let vibratoOscillator = getVibratoOscillator(bufferSource.detune, value, t);
 
   // asny stuff above took too long?
   if (ac.currentTime > t) {
-    logger(`[sampler] still loading sound "${s}:${n}"`, 'highlight');
+    logger(`[sampler] still loading sound "${s}:${soundIndex}"`, 'highlight');
     // console.warn('sample still loading:', s, n);
     return;
   }
   if (!bufferSource) {
-    logger(`[sampler] could not load "${s}:${n}"`, 'error');
+    logger(`[sampler] could not load "${s}:${soundIndex}"`, 'error');
     return;
   }
   bufferSource.playbackRate.value = Math.abs(speed) * bufferSource.playbackRate.value;
@@ -315,12 +321,13 @@ export async function onTriggerSample(t, value, onended, bank, resolveUrl) {
   }
   let holdEnd = t + duration;
 
-  getParamADSR(node.gain, attack, decay, sustain, release, 0, 1, t, holdEnd, 'linear');
+  getParamADSR(node.gain, attack, decay, sustain, release, 0, gain, t, holdEnd, 'linear');
 
   // pitch envelope
   getPitchEnvelope(bufferSource.detune, value, t, holdEnd);
 
   const out = ac.createGain(); // we need a separate gain for the cutgroups because firefox...
+
   node.connect(out);
   bufferSource.onended = function () {
     bufferSource.disconnect();

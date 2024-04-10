@@ -8,6 +8,7 @@ import { Hap } from './hap.mjs';
 import { Pattern, fastcat, reify, silence, stack, register } from './pattern.mjs';
 import Fraction from './fraction.mjs';
 import { id, _mod, clamp, objectMap } from './util.mjs';
+import { parse } from 'acorn';
 
 export function steady(value) {
   // A continuous value
@@ -481,6 +482,26 @@ const wchooseWith = (...args) => _wchooseWith(...args).outerJoin();
 export const wchoose = (...pairs) => wchooseWith(rand, ...pairs);
 
 /**
+ * Chooses randomly from the given list of elements by giving a probability to each element
+ * @param {...any} pairs arrays of value and weight
+ * @returns {Pattern} - a continuous pattern.
+ * @example
+ * note("c2 g2!2 d2 f1").s(booze(["sine",10], ["triangle",1], ["bd:6",1]))
+ */
+export const booze = (...pairs) => {
+  // pairs = pairs.map(reify);
+
+  pairs.map((p) => {
+    // p = p.discreteOnly();
+
+    p.withHap((hap) => {
+      console.log(hap.value);
+    });
+    // console.log(p.firstCycle()[0].value);
+  });
+};
+
+/**
  * Picks one of the elements at random each cycle by giving a probability to each element
  * @synonyms wrandcat
  * @returns {Pattern}
@@ -514,6 +535,38 @@ export const perlin = perlinWith(time.fmap((v) => Number(v)));
 export const degradeByWith = register('degradeByWith', (withPat, x, pat) =>
   pat.fmap((a) => (_) => a).appLeft(withPat.filterValues((v) => v > x)),
 );
+
+export const onlist3 = register('onlist3', (times, div, pat) => {
+  if (typeof times === 'number') {
+    times = [times];
+  }
+  // times = reify(times);
+  let withPat = times[0];
+  // return pat.withHap((hap) => {
+  //   console.log(times);
+  //   return hap.withValue(() => ({ ...hap.value, note: 'f' }));
+  // });
+
+  return pat
+    .fmap((a) => (_) => a)
+    .apply((x) =>
+      withPat.withHap((hap) => {
+        console.log({ hap });
+        const [start, note, end] = hap.value;
+
+        return hap.withValue((v) => {
+          return { note };
+        });
+      }),
+    );
+
+  // return stack(
+  // ...times.map(t => pat.pressBy(_mod(t[0], div)/div).duration(t[2] ?? 1/div).withHap(hap => hap.withValue(() => {
+
+  //   return ({...hap.value, note: t[1].__pure})
+
+  // }) )))
+});
 
 /**
  * Randomly removes events from the pattern by a given amount.

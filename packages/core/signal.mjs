@@ -11,6 +11,7 @@ import TimeSpan from './timespan.mjs';
 
 import { id, _mod, clamp, objectMap } from './util.mjs';
 import { parse } from 'acorn';
+import State from './state.mjs';
 
 export function steady(value) {
   // A continuous value
@@ -538,69 +539,52 @@ export const degradeByWith = register('degradeByWith', (withPat, x, pat) =>
   pat.fmap((a) => (_) => a).appLeft(withPat.filterValues((v) => v > x)),
 );
 
-export const onlist3 = register('onlist3', (times, div, pat) => {
-  if (typeof times === 'number') {
-    times = [times];
+export const onlist = register('onlist', (meta_pats, div, pat) => {
+  if (!Array.isArray(meta_pats)) {
+    meta_pats = [meta_pats];
   }
-  // times = reify(times);
-  let withPat = times[0];
-  // return pat.withHap((hap) => {
-  //   console.log(times);
-  //   return hap.withValue(() => ({ ...hap.value, note: 'f' }));
-  // });
+
   const factor = 1 / div;
-  const applyNew = (pat_val, withPat) => {
+  const applyMeta = (meta_pats) => {
     const query = function (state) {
       const haps = [];
-      for (const hap of withPat.query(state)) {
-        const [startF, note, endF] = hap.value;
-        haps.push(
-          hap
-            .withValue(() => {
+      for (let meta_pat of meta_pats) {
+        meta_pat = reify(meta_pat);
+        for (let hap of meta_pat.query(state)) {
+          let value = hap.value;
+
+          if (!Array.isArray(value)) {
+            value = [value];
+          }
+          const [startF, note = 'c3', endF = 1] = value;
+          hap = hap.withSpan((part) => {
+            part.begin = part.begin.add(startF * factor);
+            part.end = part.begin.add(factor * endF);
+            return part;
+          });
+
+          if (note != null) {
+            hap = hap.withValue(() => {
               return { note };
-            })
-            .withSpan((part) => {
-              part.begin = part.begin.add(startF * factor);
-              part.end = part.begin.add(factor * endF);
-              return part;
-              // return part.withEnd((end) => end.add(2));
-            }),
-        );
-        // const begin = hap.part.begin;
-        // const end = hap.part.end;
-        // const cycle = begin.sam();
-        // const beginPos = begin.sub(cycle).mul(11.2);
-        // const endPos = end.sub(cycle).sub(100).min(1);
+            });
+          }
 
-        // const new_part = new TimeSpan(begin.sam(), begin.sam().add(0.1));
-        // console.log({ beginPos, new_part, hap });
-
-        // const newhap = new Hap(hap.whole, hap.part, { note });
-
-        // haps.push(newhap);
+          haps.push(hap);
+        }
       }
 
-      // for (const hap_val of pat_val.query(state)) {
-      //   const hap_funcs = pat_func.query(state.setSpan(hap_val.wholeOrPart()));
-      //   for (const hap_func of hap_funcs) {
-      //     const new_whole = hap_val.whole;
-      //     const new_part = hap_func.part.intersection(hap_val.part);
-      //     if (new_part) {
-      //       const new_value = hap_func.value(hap_val.value);
-      //       const new_context = hap_val.combineContext(hap_func);
-      //       const hap = new Hap(new_whole, new_part, new_value, new_context);
-      //       haps.push(hap);
-      //     }
-      //   }
-      // }
       return haps;
     };
     const result = new Pattern(query);
 
-    result.tactus = pat_val.tactus;
+    // result.tactus = pat.tactus;
     return result;
   };
-  return applyNew(pat, withPat);
+
+  return applyMeta(meta_pats)
+    .fmap((a) => (_) => a)
+    .appLeft(pat);
+  // return pat.fmap((a) => (_) => a).appRight(applyMeta(meta_pats));
 
   // return pat
   //   .fmap((a) => (_) => a)
@@ -616,7 +600,7 @@ export const onlist3 = register('onlist3', (times, div, pat) => {
   //   );
 
   // return stack(
-  // ...times.map(t => pat.pressBy(_mod(t[0], div)/div).duration(t[2] ?? 1/div).withHap(hap => hap.withValue(() => {
+  // ...meta_pats.map(t => pat.pressBy(_mod(t[0], div)/div).duration(t[2] ?? 1/div).withHap(hap => hap.withValue(() => {
 
   //   return ({...hap.value, note: t[1].__pure})
 

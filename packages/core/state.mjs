@@ -10,7 +10,7 @@ export class State {
     this.controls = controls;
   }
 
-  // Returns new State with different span
+  // Returns new State with different TimeSpan
   setSpan(span) {
     return new State(span, this.controls);
   }

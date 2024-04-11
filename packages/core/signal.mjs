@@ -7,6 +7,8 @@ This program is free software: you can redistribute it and/or modify it under th
 import { Hap } from './hap.mjs';
 import { Pattern, fastcat, reify, silence, stack, register } from './pattern.mjs';
 import Fraction from './fraction.mjs';
+import TimeSpan from './timespan.mjs';
+
 import { id, _mod, clamp, objectMap } from './util.mjs';
 import { parse } from 'acorn';
 
@@ -546,19 +548,72 @@ export const onlist3 = register('onlist3', (times, div, pat) => {
   //   console.log(times);
   //   return hap.withValue(() => ({ ...hap.value, note: 'f' }));
   // });
+  const factor = 1 / div;
+  const applyNew = (pat_val, withPat) => {
+    const query = function (state) {
+      const haps = [];
+      for (const hap of withPat.query(state)) {
+        const [startF, note, endF] = hap.value;
+        haps.push(
+          hap
+            .withValue(() => {
+              return { note };
+            })
+            .withSpan((part) => {
+              part.begin = part.begin.add(startF * factor);
+              part.end = part.begin.add(factor * endF);
+              return part;
+              // return part.withEnd((end) => end.add(2));
+            }),
+        );
+        // const begin = hap.part.begin;
+        // const end = hap.part.end;
+        // const cycle = begin.sam();
+        // const beginPos = begin.sub(cycle).mul(11.2);
+        // const endPos = end.sub(cycle).sub(100).min(1);
 
-  return pat
-    .fmap((a) => (_) => a)
-    .apply((x) =>
-      withPat.withHap((hap) => {
-        console.log({ hap });
-        const [start, note, end] = hap.value;
+        // const new_part = new TimeSpan(begin.sam(), begin.sam().add(0.1));
+        // console.log({ beginPos, new_part, hap });
 
-        return hap.withValue((v) => {
-          return { note };
-        });
-      }),
-    );
+        // const newhap = new Hap(hap.whole, hap.part, { note });
+
+        // haps.push(newhap);
+      }
+
+      // for (const hap_val of pat_val.query(state)) {
+      //   const hap_funcs = pat_func.query(state.setSpan(hap_val.wholeOrPart()));
+      //   for (const hap_func of hap_funcs) {
+      //     const new_whole = hap_val.whole;
+      //     const new_part = hap_func.part.intersection(hap_val.part);
+      //     if (new_part) {
+      //       const new_value = hap_func.value(hap_val.value);
+      //       const new_context = hap_val.combineContext(hap_func);
+      //       const hap = new Hap(new_whole, new_part, new_value, new_context);
+      //       haps.push(hap);
+      //     }
+      //   }
+      // }
+      return haps;
+    };
+    const result = new Pattern(query);
+
+    result.tactus = pat_val.tactus;
+    return result;
+  };
+  return applyNew(pat, withPat);
+
+  // return pat
+  //   .fmap((a) => (_) => a)
+  //   .apply((x) =>
+  //     withPat.withHap((hap) => {
+  //       console.log({ hap });
+  //       const [start, note, end] = hap.value;
+
+  //       return hap.withValue((v) => {
+  //         return { note };
+  //       });
+  //     }),
+  //   );
 
   // return stack(
   // ...times.map(t => pat.pressBy(_mod(t[0], div)/div).duration(t[2] ?? 1/div).withHap(hap => hap.withValue(() => {

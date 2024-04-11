@@ -556,7 +556,7 @@ export const onlist = register('onlist', (meta_pats, div, pat) => {
           if (!Array.isArray(value)) {
             value = [value];
           }
-          const [startF, note = 'c3', endF = 1] = value;
+          const [startF, note, endF = 1] = value;
           hap = hap.withSpan((part) => {
             part.begin = part.begin.add(startF * factor);
             part.end = part.begin.add(factor * endF);
@@ -564,6 +564,7 @@ export const onlist = register('onlist', (meta_pats, div, pat) => {
           });
 
           if (note != null) {
+            console.log(hap);
             hap = hap.withValue(() => {
               return { note };
             });
@@ -582,7 +583,10 @@ export const onlist = register('onlist', (meta_pats, div, pat) => {
   };
 
   return applyMeta(meta_pats)
-    .fmap((a) => (_) => a)
+    .fmap((a) => (x) => {
+      console.log({ x, a });
+      return { ...x, ...a };
+    })
     .appLeft(pat);
   // return pat.fmap((a) => (_) => a).appRight(applyMeta(meta_pats));
 

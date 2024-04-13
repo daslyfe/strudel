@@ -539,76 +539,114 @@ export const degradeByWith = register('degradeByWith', (withPat, x, pat) =>
   pat.fmap((a) => (_) => a).appLeft(withPat.filterValues((v) => v > x)),
 );
 
-export const onlist = register('onlist', (meta_pats, div, pat) => {
-  if (!Array.isArray(meta_pats)) {
-    meta_pats = [meta_pats];
-  }
+// export const onlist = register('onlist', (meta_pats, div, pat) => {
+//   if (!Array.isArray(meta_pats)) {
+//     meta_pats = [meta_pats];
+//   }
 
+//   const factor = 1 / div;
+//   const applyMeta = (meta_pats) => {
+//     const query = function (state) {
+//       const haps = [];
+//       for (let meta_pat of meta_pats) {
+//         meta_pat = reify(meta_pat);
+//         for (let hap of meta_pat.query(state)) {
+//           let value = hap.value;
+
+//           if (!Array.isArray(value)) {
+//             value = [value];
+//           }
+//           const [startF, note, endF = 1] = value;
+//           hap = hap.withSpan((part) => {
+//             part.begin = part.begin.add(startF * factor);
+//             part.end = part.begin.add(factor * endF);
+//             return part;
+//           });
+
+//           if (note != null) {
+//             hap = hap.withValue(() => {
+//               return { note };
+//             });
+//           }
+
+//           haps.push(hap);
+//         }
+//       }
+
+//       return haps;
+//     };
+//     const result = new Pattern(query);
+//     return result;
+//   };
+
+//   return applyMeta(meta_pats)
+//     .fmap((rightVal) => (leftVal) => {
+//       return { ...leftVal, ...rightVal };
+//     })
+//     .appLeft(pat);
+// });
+
+export const onlist = register('onlist', (meta_pat, target, pat) => {
+  if (!Array.isArray(target)) {
+    target = [target];
+  }
+  const div = target[0];
   const factor = 1 / div;
-  const applyMeta = (meta_pats) => {
+  const applyMeta = (meta_pat) => {
     const query = function (state) {
       const haps = [];
-      for (let meta_pat of meta_pats) {
-        meta_pat = reify(meta_pat);
-        for (let hap of meta_pat.query(state)) {
-          let value = hap.value;
 
-          if (!Array.isArray(value)) {
-            value = [value];
-          }
-          const [startF, note, endF = 1] = value;
-          hap = hap.withSpan((part) => {
-            part.begin = part.begin.add(startF * factor);
-            part.end = part.begin.add(factor * endF);
-            return part;
-          });
+      meta_pat = reify(meta_pat);
+      for (let hap of meta_pat.query(state)) {
+        let value = hap.value;
 
-          if (note != null) {
-            console.log(hap);
-            hap = hap.withValue(() => {
-              return { note };
-            });
-          }
-
-          haps.push(hap);
+        if (!Array.isArray(value)) {
+          value = [value];
         }
+        const [startF, note, endF = 1] = value;
+        hap = hap.withSpan((part) => {
+          part.begin = part.begin.add(startF * factor);
+          part.end = part.begin.add(factor * endF);
+          return part;
+        });
+
+        if (note != null) {
+          hap = hap.withValue(() => {
+            return { note };
+          });
+        }
+
+        haps.push(hap);
       }
 
       return haps;
     };
     const result = new Pattern(query);
-
-    // result.tactus = pat.tactus;
     return result;
   };
+  if (!Array.isArray(meta_pat)) {
+    meta_pat = [meta_pat];
+  }
+  return pat.withHap((hap) => {
+    let value = hap.value;
 
-  return applyMeta(meta_pats)
-    .fmap((a) => (x) => {
-      console.log({ x, a });
-      return { ...x, ...a };
-    })
-    .appLeft(pat);
-  // return pat.fmap((a) => (_) => a).appRight(applyMeta(meta_pats));
+    console.log(meta_pat);
+    let [start, note, end = 1] = meta_pat;
+    hap = hap.withSpan((part) => {
+      part.begin = part.begin.add(start * factor);
+      part.end = part.begin.add(factor * end);
+      return part;
+    });
 
-  // return pat
-  //   .fmap((a) => (_) => a)
-  //   .apply((x) =>
-  //     withPat.withHap((hap) => {
-  //       console.log({ hap });
-  //       const [start, note, end] = hap.value;
+    // console.log(hap);
+    return hap;
+  });
 
-  //       return hap.withValue((v) => {
-  //         return { note };
-  //       });
-  //     }),
-  //   );
-
-  // return stack(
-  // ...meta_pats.map(t => pat.pressBy(_mod(t[0], div)/div).duration(t[2] ?? 1/div).withHap(hap => hap.withValue(() => {
-
-  //   return ({...hap.value, note: t[1].__pure})
-
-  // }) )))
+  // return applyMeta(meta_pat)
+  //   .fmap((rightVal) => (leftVal) => {
+  //     return { ...leftVal, ...rightVal };
+  //   })
+  //   .appLeft(pat);
 });
 
 /**

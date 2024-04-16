@@ -95,6 +95,7 @@ export function SettingsTab({ started }) {
     fontFamily,
     panelPosition,
     audioDeviceName,
+    audioLatency,
   } = useSettings();
 
   return (
@@ -108,6 +109,7 @@ export function SettingsTab({ started }) {
           />
         </FormItem>
       )}
+
       <FormItem label="Theme">
         <SelectInput options={themeOptions} value={theme} onChange={(theme) => settingsMap.setKey('theme', theme)} />
       </FormItem>
@@ -129,6 +131,14 @@ export function SettingsTab({ started }) {
           />
         </FormItem>
       </div>
+      <FormItem label="Audio Latency ms">
+        <input
+          type="number"
+          value={audioLatency}
+          className="w-16 bg-background rounded-md"
+          onChange={(e) => settingsMap.setKey('audioLatency', Number(e.target.value))}
+        />
+      </FormItem>
       <FormItem label="Keybindings">
         <ButtonGroup
           value={keybindings}

@@ -28,9 +28,14 @@ export const resetLoadedSounds = () => soundMap.set({});
 
 let audioContext;
 
-export const setDefaultAudioContext = () => {
-  audioContext = new AudioContext();
-  return audioContext;
+export const setDefaultAudioContext = (audioLatency) => {
+  if (audioLatency != null && audioLatency > 0) {
+    audioContext = new AudioContext({ latencyHint: audioLatency * 0.001 });
+    return audioContext;
+  } else {
+    audioContext = new AudioContext();
+    return audioContext;
+  }
 };
 
 export const getAudioContext = () => {

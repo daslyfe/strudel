@@ -131,14 +131,14 @@ export class Drawer {
         const lookbehind = Math.abs(this.drawTime[0]);
         const lookahead = this.drawTime[1];
         // calculate current frame time (think right side of screen for pianoroll)
-        const phase = this.scheduler.now() + lookahead;
+        const phase = this.scheduler.now() + lookahead + 1.75;
         // first frame just captures the phase
         if (this.lastFrame === null) {
           this.lastFrame = phase;
           return;
         }
         // query haps from last frame till now. take last 100ms max
-        const haps = this.scheduler.pattern.queryArc(Math.max(this.lastFrame, phase - 1 / 10), phase);
+        const haps = this.scheduler.pattern.queryArc(this.lastFrame, phase);
         this.lastFrame = phase;
         this.visibleHaps = (this.visibleHaps || [])
           // filter out haps that are too far in the past (think left edge of screen for pianoroll)

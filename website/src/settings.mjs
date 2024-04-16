@@ -27,6 +27,7 @@ export const defaultSettings = {
   panelPosition: 'right',
   userPatterns: '{}',
   audioDeviceName: defaultAudioDeviceName,
+  audioLatency: 0,
 };
 
 export const settingsMap = persistentMap('strudel-settings', defaultSettings);

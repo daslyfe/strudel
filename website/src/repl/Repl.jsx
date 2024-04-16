@@ -15,12 +15,11 @@ import {
   resetGlobalEffects,
   resetLoadedSounds,
 } from '@strudel/webaudio';
-import { defaultAudioDeviceName } from '../settings.mjs';
 import { getAudioDevices, setAudioDevice } from './util.mjs';
 import { StrudelMirror, defaultSettings } from '@strudel/codemirror';
 import { clearHydra } from '@strudel/hydra';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { settingsMap, useSettings } from '../settings.mjs';
+import { settingsMap, useSettings, defaultAudioDeviceName } from '../settings.mjs';
 import {
   setActivePattern,
   setLatestCode,
@@ -61,7 +60,7 @@ async function getModule(name) {
 
 export function Repl({ embedded = false }) {
   const isEmbedded = embedded || isIframe;
-  const { panelPosition, isZen, isSyncEnabled } = useSettings();
+  const { panelPosition, isZen, isSyncEnabled, audioLatency } = useSettings();
   const init = useCallback(() => {
     const drawTime = [-2, 2];
     const drawContext = getDrawContext();
@@ -161,7 +160,8 @@ export function Repl({ embedded = false }) {
         if (deviceID == null) {
           return;
         }
-        setAudioDevice(deviceID);
+        console.log(audioLatency);
+        setAudioDevice(deviceID, audioLatency);
       });
     }
   }, []);

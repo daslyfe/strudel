@@ -144,14 +144,14 @@ export const getAudioDevices = async () => {
   return devicesMap;
 };
 
-export const setAudioDevice = async (id) => {
+export const setAudioDevice = async (id, latencyHint) => {
   let audioCtx = getAudioContext();
   if (audioCtx.sinkId === id) {
     return;
   }
   await audioCtx.suspend();
   await audioCtx.close();
-  audioCtx = setDefaultAudioContext();
+  audioCtx = setDefaultAudioContext(latencyHint);
   await audioCtx.resume();
   const isValidID = (id ?? '').length > 0;
   if (isValidID) {

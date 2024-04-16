@@ -25,7 +25,7 @@ export const defaultSettings = {
   isZen: false,
   soundsFilter: 'all',
   patternFilter: 'community',
-  panelPosition: 'right',
+  panelPosition: isUdels ? 'bottom' : 'right',
   userPatterns: '{}',
   audioDeviceName: defaultAudioDeviceName,
 };

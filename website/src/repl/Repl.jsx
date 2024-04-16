@@ -164,6 +164,13 @@ export function Repl({ embedded = false }) {
         setAudioDevice(deviceID);
       });
     }
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'ShiftRight') {
+        e.preventDefault();
+        e.stopPropagation();
+        handleEvaluate();
+      }
+    });
   }, []);
 
   //

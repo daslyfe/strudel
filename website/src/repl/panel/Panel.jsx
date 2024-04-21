@@ -83,7 +83,7 @@ export function Panel({ context }) {
 
   let positions = {
     right: cx('max-w-full flex-grow-0 flex-none overflow-hidden', isActive ? 'w-[600px] h-full' : 'absolute right-0'),
-    bottom: cx('relative', isActive ? 'h-[360px] min-h-[360px]' : ''),
+    bottom: cx('relative', isActive ? 'h-[200px] min-h-[200px]' : ''),
   };
   if (!client) {
     return null;

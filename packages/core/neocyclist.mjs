@@ -86,7 +86,7 @@ export class NeoCyclist {
             this.latency +
             this.worker_time_dif;
           const duration = hap.duration / this.cps;
-          onTrigger?.(hap, 0, duration, this.cps, targetTime);
+          onTrigger?.(hap, 0, duration, this.cps, targetTime, this.cycle);
         }
       });
     };

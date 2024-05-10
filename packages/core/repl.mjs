@@ -54,10 +54,12 @@ export function repl({
   const scheduler =
     sync && typeof SharedWorker != 'undefined' ? new NeoCyclist(schedulerOptions) : new Cyclist(schedulerOptions);
   let pPatterns = {};
+  let anonymousIndex = 0;
   let allTransform;
 
   const hush = function () {
     pPatterns = {};
+    anonymousIndex = 0;
     allTransform = undefined;
     return silence;
   };
@@ -82,6 +84,15 @@ export function repl({
   // set pattern methods that use this repl via closure
   const injectPatternMethods = () => {
     Pattern.prototype.p = function (id) {
+      if (id.startsWith('_') || id.endsWith('_')) {
+        // allows muting a pattern x with x_ or _x
+        return silence;
+      }
+      if (id === '$') {
+        // allows adding anonymous patterns with $:
+        id = `$${anonymousIndex}`;
+        anonymousIndex++;
+      }
       pPatterns[id] = this;
       return this;
     };
@@ -167,15 +178,15 @@ export function repl({
 
 export const getTrigger =
   ({ getTime, defaultOutput }) =>
-  async (hap, deadline, duration, cps, t) => {
+  async (hap, deadline, duration, cps, t, cycle = 0) => {
     // TODO: get rid of deadline after https://github.com/tidalcycles/strudel/pull/1004
     try {
       if (!hap.context.onTrigger || !hap.context.dominantTrigger) {
-        await defaultOutput(hap, deadline, duration, cps, t);
+        await defaultOutput(hap, deadline, duration, cps, t, cycle);
       }
       if (hap.context.onTrigger) {
         // call signature of output / onTrigger is different...
-        await hap.context.onTrigger(getTime() + deadline, hap, getTime(), cps, t);
+        await hap.context.onTrigger(getTime() + deadline, hap, getTime(), cps, t, cycle);
       }
     } catch (err) {
       logger(`[cyclist] error: ${err.message}`, 'error');

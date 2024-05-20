@@ -146,24 +146,25 @@ function getDelay(orbit, delaytime, delayfeedback, t) {
 
 // each orbit will have its own lfo
 const phaserLFOs = {};
-function getPhaser(orbit, t, speed = 1, depth = 0.5, centerFrequency = 1000, sweep = 2000) {
+function getPhaser(cps, cycle, begin, end, speed = 1, depth = 0.5, centerFrequency = 1000, sweep = 2000) {
   //gain
   const ac = getAudioContext();
   const lfoGain = ac.createGain();
   lfoGain.gain.value = sweep;
 
-  //LFO
-  if (phaserLFOs[orbit] == null) {
-    phaserLFOs[orbit] = ac.createOscillator();
-    phaserLFOs[orbit].frequency.value = speed;
-    phaserLFOs[orbit].type = 'sine';
-    phaserLFOs[orbit].start();
-  }
+  const lfo = getWorklet(ac, 'lfo-processor', {
+    speed,
+    depth,
+    skew: 0.5,
+    phaseoffset: 0,
+    begin,
+    end,
+    // shape: amshape,
 
-  phaserLFOs[orbit].connect(lfoGain);
-  if (phaserLFOs[orbit].frequency.value != speed) {
-    phaserLFOs[orbit].frequency.setValueAtTime(speed, t);
-  }
+    cps,
+    cycle,
+  });
+  lfo.connect(lfoGain);
 
   //filters
   const numStages = 2; //num of filters in series
@@ -503,7 +504,7 @@ export const superdough = async (value, t, hapDuration, cps, cycle) => {
   }
   // phaser
   if (phaser !== undefined && phaserdepth > 0) {
-    const phaserFX = getPhaser(orbit, t, phaser, phaserdepth, phasercenter, phasersweep);
+    const phaserFX = getPhaser(cps, cycle, t, t + hapDuration, phaser, phaserdepth, phasercenter, phasersweep);
     chain.push(phaserFX);
   }
 

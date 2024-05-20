@@ -58,6 +58,14 @@ export function getWorklet(ac, processor, params, config) {
   return node;
 }
 
+function cycleToTime(cycle, cps) {
+  return cycle / cps;
+}
+
+function timeToCycle(time, cps) {
+  return time * cps;
+}
+
 // this function should be called on first user interaction (to avoid console warning)
 export async function initAudio(options = {}) {
   const { disableWorklets = false } = options;
@@ -144,25 +152,20 @@ function getDelay(orbit, delaytime, delayfeedback, t) {
   return delays[orbit];
 }
 
-// each orbit will have its own lfo
-const phaserLFOs = {};
-function getPhaser(cps, cycle, begin, end, speed = 1, depth = 0.5, centerFrequency = 1000, sweep = 2000) {
+function getPhaser(time, end, frequency = 1, depth = 0.5, centerFrequency = 1000, sweep = 2000) {
   //gain
   const ac = getAudioContext();
   const lfoGain = ac.createGain();
   lfoGain.gain.value = sweep;
 
   const lfo = getWorklet(ac, 'lfo-processor', {
-    speed,
+    frequency,
     depth,
     skew: 0.5,
     phaseoffset: 0,
-    begin,
+    time,
     end,
     // shape: amshape,
-
-    cps,
-    cycle,
   });
   lfo.connect(lfoGain);
 
@@ -504,7 +507,14 @@ export const superdough = async (value, t, hapDuration, cps, cycle) => {
   }
   // phaser
   if (phaser !== undefined && phaserdepth > 0) {
-    const phaserFX = getPhaser(cps, cycle, t, t + hapDuration, phaser, phaserdepth, phasercenter, phasersweep);
+    const phaserFX = getPhaser(
+      cycleToTime(cycle, cps),
+      t + hapDuration,
+      timeToCycle(phaser, cps),
+      phaserdepth,
+      phasercenter,
+      phasersweep,
+    );
     chain.push(phaserFX);
   }
 

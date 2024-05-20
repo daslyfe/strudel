@@ -132,11 +132,9 @@ registerProcessor('am-processor', AMProcessor);
 class LFOProcessor extends AudioWorkletProcessor {
   static get parameterDescriptors() {
     return [
-      { name: 'begin', defaultValue: 0 },
+      { name: 'time', defaultValue: 0 },
       { name: 'end', defaultValue: 0 },
-      { name: 'cps', defaultValue: 0.5 },
-      { name: 'speed', defaultValue: 0.5 },
-      { name: 'cycle', defaultValue: 0 },
+      { name: 'frequency', defaultValue: 0.5 },
       { name: 'skew', defaultValue: 0.5 },
       { name: 'depth', defaultValue: 1 },
       { name: 'phaseoffset', defaultValue: 0 },
@@ -162,19 +160,17 @@ class LFOProcessor extends AudioWorkletProcessor {
     }
 
     const output = outputs[0];
-    const speed = parameters['speed'][0];
-    const cps = parameters['cps'][0];
-    const cycle = parameters['cycle'][0];
+    const frequency = parameters['frequency'][0];
+
+    const time = parameters['time'][0];
     const depth = parameters['depth'][0];
     const skew = parameters['skew'][0];
     const phaseoffset = parameters['phaseoffset'][0];
 
     const blockSize = output[0].length ?? 0;
 
-    const frequency = speed * cps;
     if (this.phase == null) {
-      const secondsPassed = cycle / cps;
-      this.phase = _mod(secondsPassed * frequency + phaseoffset, 1);
+      this.phase = _mod(time * frequency + phaseoffset, 1);
     }
     // eslint-disable-next-line no-undef
     const dt = frequency / sampleRate;

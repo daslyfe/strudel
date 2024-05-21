@@ -161,11 +161,11 @@ function getPhaser(time, end, frequency = 1, depth = 0.5, centerFrequency = 1000
   const lfo = getWorklet(ac, 'lfo-processor', {
     frequency,
     depth,
-    skew: 0.5,
+    skew: 0,
     phaseoffset: 0,
     time,
     end,
-    // shape: amshape,
+    shape: 1,
   });
   lfo.connect(lfoGain);
 

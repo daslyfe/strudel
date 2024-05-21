@@ -27,8 +27,29 @@ function polyBlep(phase, dt) {
 }
 
 const waveshapes = {
+  tri(phase, skew = 0.5) {
+    const x = 1 - skew;
+    if (phase >= skew) {
+      return 1 / x - phase / x;
+    }
+    return phase / skew;
+  },
   sine(phase) {
-    return Math.sin(Math.PI * 2 * phase);
+    return Math.sin(Math.PI * 2 * phase) * 0.5 + 0.5;
+    // return Math.sin(Math.PI * 2 * phase);
+  },
+  ramp(phase) {
+    return phase;
+  },
+  saw(phase) {
+    return 1 - phase;
+  },
+
+  square(phase, skew = 0.5) {
+    if (phase >= skew) {
+      return 0;
+    }
+    return 1;
   },
   custom(phase, values = [0, 1]) {
     const numParts = values.length - 1;
@@ -48,26 +69,9 @@ const waveshapes = {
     const v = 2 * phase - 1;
     return v - polyBlep(phase, dt);
   },
-  ramp(phase) {
-    return phase;
-  },
-  saw(phase) {
-    return 1 - phase;
-  },
-  tri(phase, skew = 0.5) {
-    const x = 1 - skew;
-    if (phase >= skew) {
-      return 1 / x - phase / x;
-    }
-    return phase / skew;
-  },
-  square(phase, skew = 0.5) {
-    if (phase >= skew) {
-      return 0;
-    }
-    return 1;
-  },
 };
+
+const waveShapeNames = Object.keys(waveshapes);
 
 class AMProcessor extends AudioWorkletProcessor {
   static get parameterDescriptors() {
@@ -138,6 +142,7 @@ class LFOProcessor extends AudioWorkletProcessor {
       { name: 'skew', defaultValue: 0.5 },
       { name: 'depth', defaultValue: 1 },
       { name: 'phaseoffset', defaultValue: 0 },
+      { name: 'shape', defaultValue: 0 },
     ];
   }
 
@@ -166,6 +171,7 @@ class LFOProcessor extends AudioWorkletProcessor {
     const depth = parameters['depth'][0];
     const skew = parameters['skew'][0];
     const phaseoffset = parameters['phaseoffset'][0];
+    const shape = waveShapeNames[parameters['shape'][0]];
 
     const blockSize = output[0].length ?? 0;
 
@@ -176,11 +182,13 @@ class LFOProcessor extends AudioWorkletProcessor {
     const dt = frequency / sampleRate;
     for (let n = 0; n < blockSize; n++) {
       for (let i = 0; i < output.length; i++) {
-        const modval = waveshapes.tri(this.phase, skew) * depth;
+        const modval = waveshapes[shape](this.phase, skew) * depth;
+        // console.log(modval);
         output[i][n] = modval;
       }
       this.incrementPhase(dt);
     }
+
     return true;
   }
 }

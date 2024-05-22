@@ -143,6 +143,7 @@ class LFOProcessor extends AudioWorkletProcessor {
       { name: 'depth', defaultValue: 1 },
       { name: 'phaseoffset', defaultValue: 0 },
       { name: 'shape', defaultValue: 0 },
+      { name: 'dcoffset', defaultValue: 0 },
     ];
   }
 
@@ -171,6 +172,8 @@ class LFOProcessor extends AudioWorkletProcessor {
     const depth = parameters['depth'][0];
     const skew = parameters['skew'][0];
     const phaseoffset = parameters['phaseoffset'][0];
+
+    const dcoffset = parameters['dcoffset'][0];
     const shape = waveShapeNames[parameters['shape'][0]];
 
     const blockSize = output[0].length ?? 0;
@@ -182,8 +185,7 @@ class LFOProcessor extends AudioWorkletProcessor {
     const dt = frequency / sampleRate;
     for (let n = 0; n < blockSize; n++) {
       for (let i = 0; i < output.length; i++) {
-        const modval = waveshapes[shape](this.phase, skew) * depth;
-        // console.log(modval);
+        const modval = (waveshapes[shape](this.phase, skew) + dcoffset) * depth;
         output[i][n] = modval;
       }
       this.incrementPhase(dt);

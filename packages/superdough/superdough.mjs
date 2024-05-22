@@ -156,16 +156,19 @@ function getPhaser(time, end, frequency = 1, depth = 0.5, centerFrequency = 1000
   //gain
   const ac = getAudioContext();
   const lfoGain = ac.createGain();
-  lfoGain.gain.value = sweep;
+  lfoGain.gain.value = sweep * 2;
+  // centerFrequency = centerFrequency * 2;
+  // sweep = sweep * 1.5;
 
   const lfo = getWorklet(ac, 'lfo-processor', {
     frequency,
-    depth,
+    depth: 1,
     skew: 0,
     phaseoffset: 0,
     time,
     end,
     shape: 1,
+    dcoffset: -0.5,
   });
   lfo.connect(lfoGain);
 

@@ -431,6 +431,17 @@ export const { crush } = registerControl('crush');
 export const { coarse } = registerControl('coarse');
 
 /**
+ * fake-resampling for lowering the sample rate. Caution: This effect seems to only work in chromium based browsers
+ *
+ * @name mo
+ * @param {object} mo 1 for original 2 for half, 3 for a third and so on.
+ * @example
+ * s("bd sd [~ bd] sd,hh*8").lfo({pitch: lfo(2)})
+ *
+ */
+export const { mo } = registerControl('mo');
+
+/**
  * filter overdrive for supported filter types
  *
  * @name drive

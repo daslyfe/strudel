@@ -79,6 +79,83 @@ let delays = {};
 const maxfeedback = 0.98;
 
 let channelMerger, destinationGain;
+
+// const modulation = {
+//   type_val: 'lfo',
+//   shape_val: 'sine',
+//   range_val: [0, 1],
+//   range(x) {
+//     this.range_val = x;
+//   },
+//   shape(x) {
+//     this.shape = x;
+//   },
+//   type(x) {
+//     this.type = x;
+//   },
+// };
+class modulation {
+  constructor(type = 'lfo') {
+    this.val = {
+      range: [0, 1],
+      type,
+    };
+    this.setVal = (param, val) => {
+      this.val[param] = val;
+      return this;
+    };
+
+    this.range = (min, max) => {
+      return this.setVal('range', [min, max]);
+    };
+    this.type = (x) => {
+      return this.setVal('type', x);
+    };
+  }
+}
+
+class lfomodulation extends modulation {
+  constructor(frequency = 1) {
+    super('lfo');
+    this.val.shape = 'sine';
+    this.val.frequency = frequency;
+    this.shape = (x) => {
+      return this.setVal('shape', x);
+    };
+
+    this.frequency = (x) => {
+      return this.setVal('frequency', x);
+    };
+  }
+}
+
+export function lfo(frequency = 1) {
+  return new lfomodulation(frequency);
+}
+
+const getModNode = (mod, time, end) => {
+  const { val } = mod;
+  const { type = 'lfo', range } = val;
+
+  if (type === 'lfo') {
+    const { frequency } = val;
+    const [min, max] = range;
+    const depth = max - min;
+    const dcoffset = min;
+    console.log({ depth, dcoffset });
+    return getWorklet(getAudioContext(), 'lfo-processor', {
+      frequency,
+      depth,
+      skew: 0,
+      phaseoffset: 0,
+      time,
+      end,
+      shape: 1,
+      dcoffset,
+    });
+  }
+};
+
 //update the output channel configuration to match user's audio device
 export function initializeAudioOutput() {
   const audioContext = getAudioContext();
@@ -344,7 +421,10 @@ export const superdough = async (value, t, hapDuration) => {
     compressorKnee,
     compressorAttack,
     compressorRelease,
+    mo = {},
   } = value;
+
+  const end = t + hapDuration;
 
   gain = nanFallback(gain, 1);
 
@@ -388,7 +468,26 @@ export const superdough = async (value, t, hapDuration) => {
   chain.push(sourceNode);
 
   // gain stage
-  chain.push(gainNode(gain));
+  const gainnode = ac.createGain();
+  gainnode.gain.value = gain;
+  if (mo.gain != null) {
+    // const modnode = getWorklet(ac, 'lfo-processor', {
+    //   frequency: 1,
+    //   depth: 1,
+    //   skew: 0,
+    //   phaseoffset: 0,
+    //   time: t,
+    //   end,
+    //   shape: 1,
+    //   dcoffset: -0.5,
+    // });
+
+    const modnode = getModNode(mo.gain, t, end);
+    // console.log(mo.gain, t, end);
+    modnode.connect(gainnode.gain);
+  }
+
+  chain.push(gainnode);
 
   //filter
   const ftype = getFilterType(value.ftype);

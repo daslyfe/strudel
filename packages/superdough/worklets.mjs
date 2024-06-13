@@ -1,7 +1,9 @@
 // coarse, crush, and shape processors adapted from dktr0's webdirt: https://github.com/dktr0/WebDirt/blob/5ce3d698362c54d6e1b68acc47eb2955ac62c793/dist/AudioWorklets.js
 // LICENSE GNU General Public License v3.0 see https://github.com/dktr0/WebDirt/blob/main/LICENSE
-import { clamp, _mod } from './util.mjs';
-// const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
+// TOFIX: THIS FILE DOES NOT SUPPORT IMPORTS ON DEPOLYMENT
+const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
+const _mod = (n, m) => ((n % m) + m) % m;
+
 const blockSize = 128;
 // adjust waveshape to remove frequencies above nyquist to prevent aliasing
 // referenced from https://www.kvraudio.com/forum/viewtopic.php?t=375517
@@ -27,8 +29,28 @@ function polyBlep(phase, dt) {
 }
 
 const waveshapes = {
+  tri(phase, skew = 0.5) {
+    const x = 1 - skew;
+    if (phase >= skew) {
+      return 1 / x - phase / x;
+    }
+    return phase / skew;
+  },
   sine(phase) {
-    return Math.sin(Math.PI * 2 * phase);
+    return Math.sin(Math.PI * 2 * phase) * 0.5 + 0.5;
+  },
+  ramp(phase) {
+    return phase;
+  },
+  saw(phase) {
+    return 1 - phase;
+  },
+
+  square(phase, skew = 0.5) {
+    if (phase >= skew) {
+      return 0;
+    }
+    return 1;
   },
   custom(phase, values = [0, 1]) {
     const numParts = values.length - 1;
@@ -48,43 +70,26 @@ const waveshapes = {
     const v = 2 * phase - 1;
     return v - polyBlep(phase, dt);
   },
-  ramp(phase) {
-    return phase;
-  },
-  saw(phase) {
-    return 1 - phase;
-  },
-  tri(phase, skew = 0.5) {
-    const x = 1 - skew;
-    if (phase >= skew) {
-      return 1 / x - phase / x;
-    }
-    return phase / skew;
-  },
-  square(phase, skew = 0.5) {
-    if (phase >= skew) {
-      return 0;
-    }
-    return 1;
-  },
 };
 
-class AMProcessor extends AudioWorkletProcessor {
+const waveShapeNames = Object.keys(waveshapes);
+class LFOProcessor extends AudioWorkletProcessor {
   static get parameterDescriptors() {
     return [
-      { name: 'cps', defaultValue: 0.5 },
-      { name: 'speed', defaultValue: 0.5 },
-      { name: 'cycle', defaultValue: 0 },
+      { name: 'time', defaultValue: 0 },
+      { name: 'end', defaultValue: 0 },
+      { name: 'frequency', defaultValue: 0.5 },
       { name: 'skew', defaultValue: 0.5 },
       { name: 'depth', defaultValue: 1 },
       { name: 'phaseoffset', defaultValue: 0 },
+      { name: 'shape', defaultValue: 0 },
+      { name: 'dcoffset', defaultValue: 0 },
     ];
   }
 
   constructor() {
     super();
     this.phase;
-    this.started = false;
   }
 
   incrementPhase(dt) {
@@ -95,40 +100,41 @@ class AMProcessor extends AudioWorkletProcessor {
   }
 
   process(inputs, outputs, parameters) {
-    const input = inputs[0];
-    const output = outputs[0];
-    const hasInput = !(input[0] === undefined);
-    if (this.started && !hasInput) {
+    // eslint-disable-next-line no-undef
+    if (currentTime >= parameters.end[0]) {
       return false;
     }
-    this.started = hasInput;
 
-    const speed = parameters['speed'][0];
-    const cps = parameters['cps'][0];
-    const cycle = parameters['cycle'][0];
+    const output = outputs[0];
+    const frequency = parameters['frequency'][0];
+
+    const time = parameters['time'][0];
     const depth = parameters['depth'][0];
     const skew = parameters['skew'][0];
     const phaseoffset = parameters['phaseoffset'][0];
 
-    const frequency = speed * cps;
-    if (this.phase == null) {
-      const secondsPassed = cycle / cps;
-      this.phase = _mod(secondsPassed * frequency + phaseoffset, 1);
-    }
+    const dcoffset = parameters['dcoffset'][0];
+    const shape = waveShapeNames[parameters['shape'][0]];
 
+    const blockSize = output[0].length ?? 0;
+
+    if (this.phase == null) {
+      this.phase = _mod(time * frequency + phaseoffset, 1);
+    }
+    // eslint-disable-next-line no-undef
     const dt = frequency / sampleRate;
     for (let n = 0; n < blockSize; n++) {
-      for (let i = 0; i < input.length; i++) {
-        const modval = clamp(waveshapes.tri(this.phase, skew) * depth + (1 - depth), 0, 1);
-
-        output[i][n] = input[i][n] * modval;
+      for (let i = 0; i < output.length; i++) {
+        const modval = (waveshapes[shape](this.phase, skew) + dcoffset) * depth;
+        output[i][n] = modval;
       }
       this.incrementPhase(dt);
     }
+
     return true;
   }
 }
-registerProcessor('am-processor', AMProcessor);
+registerProcessor('lfo-processor', LFOProcessor);
 
 class CoarseProcessor extends AudioWorkletProcessor {
   static get parameterDescriptors() {
@@ -233,6 +239,77 @@ class ShapeProcessor extends AudioWorkletProcessor {
   }
 }
 registerProcessor('shape-processor', ShapeProcessor);
+
+function fast_tanh(x) {
+  const x2 = x * x;
+  return (x * (27.0 + x2)) / (27.0 + 9.0 * x2);
+}
+const _PI = 3.14159265359;
+//adapted from https://github.com/TheBouteillacBear/webaudioworklet-wasm?tab=MIT-1-ov-file
+class LadderProcessor extends AudioWorkletProcessor {
+  static get parameterDescriptors() {
+    return [
+      { name: 'frequency', defaultValue: 500 },
+      { name: 'q', defaultValue: 1 },
+      { name: 'drive', defaultValue: 0.69 },
+    ];
+  }
+
+  constructor() {
+    super();
+    this.started = false;
+    this.p0 = [0, 0];
+    this.p1 = [0, 0];
+    this.p2 = [0, 0];
+    this.p3 = [0, 0];
+    this.p32 = [0, 0];
+    this.p33 = [0, 0];
+    this.p34 = [0, 0];
+  }
+
+  process(inputs, outputs, parameters) {
+    const input = inputs[0];
+    const output = outputs[0];
+
+    const hasInput = !(input[0] === undefined);
+    if (this.started && !hasInput) {
+      return false;
+    }
+
+    this.started = hasInput;
+
+    const resonance = parameters.q[0];
+    const drive = clamp(Math.exp(parameters.drive[0]), 0.1, 2000);
+
+    let cutoff = parameters.frequency[0];
+    // eslint-disable-next-line no-undef
+    cutoff = (cutoff * 2 * _PI) / sampleRate;
+    cutoff = cutoff > 1 ? 1 : cutoff;
+
+    const k = Math.min(8, resonance * 0.4);
+    //               drive makeup  * resonance volume loss makeup
+    let makeupgain = (1 / drive) * Math.min(1.75, 1 + k);
+
+    for (let n = 0; n < blockSize; n++) {
+      for (let i = 0; i < input.length; i++) {
+        const out = this.p3[i] * 0.360891 + this.p32[i] * 0.41729 + this.p33[i] * 0.177896 + this.p34[i] * 0.0439725;
+
+        this.p34[i] = this.p33[i];
+        this.p33[i] = this.p32[i];
+        this.p32[i] = this.p3[i];
+
+        this.p0[i] += (fast_tanh(input[i][n] * drive - k * out) - fast_tanh(this.p0[i])) * cutoff;
+        this.p1[i] += (fast_tanh(this.p0[i]) - fast_tanh(this.p1[i])) * cutoff;
+        this.p2[i] += (fast_tanh(this.p1[i]) - fast_tanh(this.p2[i])) * cutoff;
+        this.p3[i] += (fast_tanh(this.p2[i]) - fast_tanh(this.p3[i])) * cutoff;
+
+        output[i][n] = out * makeupgain;
+      }
+    }
+    return true;
+  }
+}
+registerProcessor('ladder-processor', LadderProcessor);
 
 class DistortProcessor extends AudioWorkletProcessor {
   static get parameterDescriptors() {
@@ -387,3 +464,63 @@ class SuperSawOscillatorProcessor extends AudioWorkletProcessor {
 }
 
 registerProcessor('supersaw-oscillator', SuperSawOscillatorProcessor);
+
+class AMProcessor extends AudioWorkletProcessor {
+  static get parameterDescriptors() {
+    return [
+      { name: 'cps', defaultValue: 0.5 },
+      { name: 'speed', defaultValue: 0.5 },
+      { name: 'cycle', defaultValue: 0 },
+      { name: 'skew', defaultValue: 0.5 },
+      { name: 'depth', defaultValue: 1 },
+      { name: 'phaseoffset', defaultValue: 0 },
+    ];
+  }
+
+  constructor() {
+    super();
+    this.phase;
+    this.started = false;
+  }
+
+  incrementPhase(dt) {
+    this.phase += dt;
+    if (this.phase > 1.0) {
+      this.phase = this.phase - 1;
+    }
+  }
+
+  process(inputs, outputs, parameters) {
+    const input = inputs[0];
+    const output = outputs[0];
+    const hasInput = !(input[0] === undefined);
+    if (this.started && !hasInput) {
+      return false;
+    }
+    this.started = hasInput;
+
+    const speed = parameters['speed'][0];
+    const cps = parameters['cps'][0];
+    const cycle = parameters['cycle'][0];
+    const depth = parameters['depth'][0];
+    const skew = parameters['skew'][0];
+    const phaseoffset = parameters['phaseoffset'][0];
+
+    const frequency = speed * cps;
+    if (this.phase == null) {
+      const secondsPassed = cycle / cps;
+      this.phase = _mod(secondsPassed * frequency + phaseoffset, 1);
+    }
+    // eslint-disable-next-line no-undef
+    const dt = frequency / sampleRate;
+    for (let n = 0; n < blockSize; n++) {
+      for (let i = 0; i < input.length; i++) {
+        const modval = clamp(waveshapes.tri(this.phase, skew) * depth + (1 - depth), 0, 1);
+        output[i][n] = input[i][n] * modval;
+      }
+      this.incrementPhase(dt);
+    }
+    return true;
+  }
+}
+registerProcessor('am-processor', AMProcessor);

@@ -1193,8 +1193,16 @@ export const { harmonic } = registerControl('harmonic');
 export const { stepsPerOctave } = registerControl('stepsPerOctave');
 // TODO: what is this? not found in tidal doc
 export const { octaveR } = registerControl('octaveR');
-// TODO: why is this needed? what's the difference to late / early? Answer: it's in seconds, and delays the message at
-// OSC time (so can't be negative, at least not beyond the latency value)
+
+/**
+ * offset the event in milliseconds
+ *
+ * @name nudge
+ * @param {number | Pattern} milliseconds offset in ms
+ * @example
+ * stack(s("bd:4!4"),s("~ cp".fast(2)).nudge("-15 0"))
+ * 
+ */
 export const { nudge } = registerControl('nudge');
 // TODO: the following doc is just a guess, it's not documented in tidal doc.
 /**

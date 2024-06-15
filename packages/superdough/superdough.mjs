@@ -34,6 +34,7 @@ const defaultDefaultValues = {
   resonance: 1,
   hresonance: 1,
   bandq: 1,
+  nudge: 0,
   channels: [1, 2],
   phaserdepth: 0.75,
   shapevol: 1,
@@ -309,6 +310,7 @@ export function resetGlobalEffects() {
 }
 
 export const superdough = async (value, t, hapDuration, cps, cycle) => {
+  let {nudge = getDefaultValue('nudge')} = value;
   t = typeof t === 'string' && t.startsWith('=') ? Number(t.slice(1)) : ac.currentTime + t;
   let { stretch } = value;
   if (stretch != null) {
@@ -334,6 +336,7 @@ export const superdough = async (value, t, hapDuration, cps, cycle) => {
     );
     return;
   }
+  t = t + (nudge * .001);
   // destructure
   let {
     am,
@@ -346,6 +349,7 @@ export const superdough = async (value, t, hapDuration, cps, cycle) => {
     gain = getDefaultValue('gain'),
     postgain = getDefaultValue('postgain'),
     density = getDefaultValue('density'),
+   
     // filters
     fanchor = getDefaultValue('fanchor'),
     drive = 0.69,

@@ -251,7 +251,6 @@ export async function onTriggerSample(t, value, onended, bank, resolveUrl) {
     s,
     freq,
     unit,
-    nudge = 0, // TODO: is this in seconds?
     cut,
     loop,
     clip = undefined, // if set, samples will be cut off when the hap ends
@@ -275,7 +274,7 @@ export async function onTriggerSample(t, value, onended, bank, resolveUrl) {
 
   let [attack, decay, sustain, release] = getADSRValues([value.attack, value.decay, value.sustain, value.release]);
   //const soundfont = getSoundfontKey(s);
-  const time = t + nudge;
+  const time = t;
 
   const bufferSource = await getSampleBufferSource(s, n, note, speed, freq, bank, resolveUrl);
 

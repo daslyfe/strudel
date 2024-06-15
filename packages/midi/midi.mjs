@@ -112,11 +112,21 @@ Pattern.prototype.midi = function (output) {
       logger(`Midi device disconnected! Available: ${getMidiDeviceNamesString(outputs)}`),
   });
 
-  return this.onTrigger((time_deprecate, hap, currentTime, cps, targetTime) => {
+  return this.withHap(hap => {
+    const {s} = hap.value
+    if (s == null) {
+      return hap;
+    }
+    return hap.setContext({...hap.context, dominantTrigger: false})
+
+  }).onTrigger((time_deprecate, hap, currentTime, cps, targetTime) => {
     if (!WebMidi.enabled) {
       console.log('not enabled');
       return;
     }
+
+    
+
     const device = getDevice(output, WebMidi.outputs);
     hap.ensureObjectValue();
     //magic number to get audio engine to line up, can probably be calculated somehow
@@ -124,7 +134,10 @@ Pattern.prototype.midi = function (output) {
     // passing a string with a +num into the webmidi api adds an offset to the current time https://webmidijs.org/api/classes/Output
     const timeOffsetString = `+${getEventOffsetMs(targetTime, currentTime) + latencyMs}`;
     // destructure value
-    let { note, nrpnn, nrpv, ccn, ccv, midichan = 1, midicmd, gain = 1, velocity = 0.9 } = hap.value;
+    let {s, note, nrpnn, nrpv, ccn, ccv, midichan = 1, midicmd, gain = 1, velocity = 0.9 } = hap.value;
+    
+    // trigger the audio engine if a sound is defined in the pattern
+   
 
     velocity = gain * velocity;
 

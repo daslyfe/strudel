@@ -34,6 +34,7 @@ const defaultDefaultValues = {
   resonance: 1,
   hresonance: 1,
   bandq: 1,
+  nudge: 0,
   channels: [1, 2],
   phaserdepth: 0.75,
   shapevol: 1,
@@ -309,6 +310,7 @@ export function resetGlobalEffects() {
 }
 
 export const superdough = async (value, t, hapDuration) => {
+ let {nudge = getDefaultValue('nudge')} = value;
   const ac = getAudioContext();
   if (typeof value !== 'object') {
     throw new Error(
@@ -327,6 +329,7 @@ export const superdough = async (value, t, hapDuration) => {
     );
     return;
   }
+  t = t + (nudge * .001);
   // destructure
   let {
     s = getDefaultValue('s'),
@@ -335,6 +338,7 @@ export const superdough = async (value, t, hapDuration) => {
     gain = getDefaultValue('gain'),
     postgain = getDefaultValue('postgain'),
     density = getDefaultValue('density'),
+   
     // filters
     fanchor = getDefaultValue('fanchor'),
     drive = 0.69,

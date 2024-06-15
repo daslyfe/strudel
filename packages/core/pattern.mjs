@@ -853,20 +853,25 @@ export class Pattern {
   // Context methods - ones that deal with metadata
 
   onTrigger(onTrigger, dominant = true) {
-    return this.withHap((hap) =>
-      hap.setContext({
+    return this.withHap((hap) => {
+      console.info(hap)
+      const {dominantTrigger} = hap.context;
+
+      return hap.setContext({
         ...hap.context,
         onTrigger: (...args) => {
           // run previously set trigger, if it exists
           hap.context.onTrigger?.(...args);
           onTrigger(...args);
         },
+   
+
         // if dominantTrigger is set to true, the default output (webaudio) will be disabled
         // when using multiple triggers, you cannot flip this flag to false again!
         // example: x.csound('CooLSynth').log() as well as x.log().csound('CooLSynth') should work the same
-        dominantTrigger: hap.context.dominantTrigger || dominant,
-      }),
-    );
+        dominantTrigger: dominantTrigger == null ?  dominant : dominantTrigger
+      });
+    });
   }
 
   log(func = (_, hap) => `[hap] ${hap.showWhole(true)}`, getData = (_, hap) => ({ hap })) {

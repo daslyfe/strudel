@@ -1519,13 +1519,25 @@ export const { cps } = registerControl('cps');
  * Multiplies the duration with the given number. Also cuts samples off at the end if they exceed the duration.
  *
  * @name clip
- * @synonyms legato
+
  * @param {number | Pattern} factor >= 0
  * @example
  * note("c a f e").s("piano").clip("<.5 1 2>")
  *
  */
-export const { clip, legato } = registerControl('clip', 'legato');
+export const { clip} = registerControl('clip');
+
+/**
+ * Multiplies the duration with the given number. Also cuts samples off at the end if they exceed the duration.
+ *
+ * @name leg
+ * @param {number | Pattern} duration >= 0
+ * @example
+ * note("c a f e").s("piano").legato("<.5 1 2>")
+ *
+ */
+export const { leg} = registerControl('leg');
+
 
 /**
  * Sets the duration of the event in cycles. Similar to clip / legato, it also cuts samples off at the end if they exceed the duration.

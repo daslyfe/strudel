@@ -62,6 +62,11 @@ export class TimeSpan {
     return new TimeSpan(this.begin, func_time(this.end));
   }
 
+  withDuration(func_time) {
+    const duration = this.end.sub(this.begin);
+    return new TimeSpan(this.begin, this.begin.add(func_time(duration)))
+  }
+
   withCycle(func_time) {
     // Like withTime, but time is relative to relative to the cycle (i.e. the
     // sam of the start of the timespan)

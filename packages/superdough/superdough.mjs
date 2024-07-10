@@ -445,6 +445,7 @@ export const superdough = async (value, t, hapDuration) => {
   //filter
   const ftype = getFilterType(value.ftype);
   if (cutoff !== undefined) {
+    cutoff = cutoff.type === 'lfo' ? 200 : cutoff
     let lp = () =>
       createFilter(
         ac,

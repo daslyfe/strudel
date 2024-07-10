@@ -1118,6 +1118,7 @@ function _composeOp(a, b, func) {
   }
 
   // binary composers
+
   /**
    * Applies the given structure to the pattern:
    *
@@ -1126,7 +1127,25 @@ function _composeOp(a, b, func) {
    *   .struct("x ~ x ~ ~ x ~ x ~ ~ ~ x ~ x ~ ~")
    *   .slow(2)
    */
+ 
   Pattern.prototype.struct = function (...args) {
+    if (Array.isArray(args[0])) {
+      let i = 0;
+ 
+      const leg = calculateLegato(args[0]);
+
+      console.log(timeCat(...calculateLegato(args[0])));
+      return this.keepif.out(...args).withHap((hap) => {
+        const  gapLength = leg[i][0]
+        i = (i + 1) % leg.length
+       
+
+        const newHap = hap.setContext({ ...hap.context, gapLength })
+        console.info(newHap)
+        return newHap
+        // return hap.setContext({ ...hap.contex, gapLength: leg[i - 1][0] });
+      });
+    }
     return this.keepif.out(...args);
   };
   Pattern.prototype.structAll = function (...args) {
@@ -2263,6 +2282,27 @@ export const stut = register('stut', function (times, feedback, time, pat) {
 });
 
 /**
+ * Deprecated. Like echo, but the last 2 parameters are flipped.
+ * @name legato
+ * @param {number} duration relative to note length
+ * @example
+ * s("bd sd").stut(3, .8, 1/6)
+ */
+export const legato = register('legato', function (duration, pat) {
+  // console.info(pat)
+  return pat.withHaps((haps, state) => {
+ 
+    return haps.map((hap) => {
+      return hap.withSpan((span) => {
+        const gapLength = hap.context?.gapLength ?? 1
+        console.info(gapLength)
+        return span.withDuration((d) => d.mul(gapLength * duration));
+      });
+    });
+  });
+});
+
+/**
  * Divides a pattern into a given number of subdivisions, plays the subdivisions in order, but increments the starting subdivision each cycle. The pattern wraps to the first subdivision after the last subdivision is played.
  * @name iter
  * @memberof Pattern
@@ -2950,6 +2990,37 @@ export const fit = register('fit', (pat) =>
 export const { loopAtCps, loopatcps } = register(['loopAtCps', 'loopatcps'], function (factor, cps, pat) {
   return _loopAt(factor, pat, cps);
 });
+
+function calculateLegato(binaryArray) {
+  const gapless = [];
+  let firstOn;
+
+  binaryArray.forEach((b, i) => {
+    if (b === 1) {
+      if (firstOn == null) {
+        firstOn = i;
+      }
+    }
+  });
+
+  binaryArray.forEach((b, i) => {
+    if (b === 1) {
+      let newVal = 1;
+      if (i === binaryArray.length - 1) {
+        newVal = newVal + firstOn;
+      }
+      gapless.push([newVal, true]);
+    } else {
+      const currValIndex = gapless.length - 1;
+      const currValue = gapless[currValIndex];
+      if (currValue) {
+        let newVal = currValue[0] + 1;
+        gapless[currValIndex] = [newVal, true];
+      }
+    }
+  });
+  return gapless;
+}
 
 /** exposes a custom value at query time. basically allows mutating state without evaluation */
 export const ref = (accessor) =>

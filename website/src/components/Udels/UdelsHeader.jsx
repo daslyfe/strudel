@@ -1,4 +1,4 @@
-import NumberInput from '@src/repl/components/NumberInput';
+import NumberInput from "../../repl/components/NumberInput"
 
 export default function UdelsHeader(Props) {
   const { numWindows, setNumWindows } = Props;

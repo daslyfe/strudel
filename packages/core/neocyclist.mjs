@@ -5,6 +5,7 @@ This program is free software: you can redistribute it and/or modify it under th
 */
 
 import { logger } from './logger.mjs';
+import { averageArray } from './util.mjs';
 
 export class NeoCyclist {
   constructor({ onTrigger, onToggle, getTime }) {
@@ -13,7 +14,6 @@ export class NeoCyclist {
     this.lastTick = 0; // absolute time when last tick (clock callback) happened
     this.getTime = getTime; // get absolute time
     this.time_at_last_tick_message = 0;
-
     this.num_cycles_at_cps_change = 0;
     this.onToggle = onToggle;
     this.latency = 0.1; // fixed trigger time offset
@@ -22,32 +22,46 @@ export class NeoCyclist {
     this.worker_time_dif;
     this.worker = new SharedWorker(new URL('./clockworker.js', import.meta.url));
     this.worker.port.start();
-
     this.channel = new BroadcastChannel('strudeltick');
-    let weight = 0; // the amount of weight that is applied to the current average when averaging a new time dif
-    const maxWeight = 20;
-    const precision = 10 ** 3; //round off time diff to prevent accumulating outliers
+
+    const prevWorkerTimeDiffs = [];
+    let timeAtPrevDiffSample = -2;
 
     // the clock of the worker and the audio context clock can drift apart over time
     // aditionally, the message time of the worker pinging the callback to process haps can be inconsistent.
-    // we need to keep a rolling weighted average of the time difference between the worker clock and audio context clock
+    // we need to keep a rolling  average of the time difference between the worker clock and audio context clock
     // in order to schedule events consistently.
-    const setTimeReference = (num_seconds_at_cps_change, num_seconds_since_cps_change, tickdeadline) => {
-      const time_dif = getTime() - (num_seconds_at_cps_change + num_seconds_since_cps_change) + tickdeadline;
+    const setWorkerTimeDiff = (num_seconds_at_cps_change, num_seconds_since_cps_change, tickdeadline, time) => {
+      // the number of time samples that will be averaged together to calculate the time diff
+      const sampleLength = 16;
+      const time_dif = time - (num_seconds_at_cps_change + num_seconds_since_cps_change) + tickdeadline;
+
+      prevWorkerTimeDiffs.push(time_dif);
+
+      if (prevWorkerTimeDiffs.length > sampleLength) {
+        prevWorkerTimeDiffs.shift();
+      }
+
       if (this.worker_time_dif == null) {
         this.worker_time_dif = time_dif;
-      } else {
-        const w = 1; //weight of new time diff;
-        const new_dif =
-          Math.round(((this.worker_time_dif * weight + time_dif * w) / (weight + w)) * precision) / precision;
-
-        if (new_dif != this.worker_time_dif) {
-          // reset the weight so the clock recovers faster from an audio context freeze/dropout if it happens
-          weight = 4;
-        }
-        this.worker_time_dif = new_dif;
+        return;
       }
-      weight = Math.min(weight + 1, maxWeight);
+
+      // do nothing if interval has not passed yet
+      if (prevWorkerTimeDiffs.length >= sampleLength && Math.abs(time - timeAtPrevDiffSample) < 2) {
+        return;
+      }
+
+      const rollingWorkerTimeDiff = averageArray(prevWorkerTimeDiffs);
+
+      const driftDelta = 0.002;
+
+      if (Math.abs(rollingWorkerTimeDiff - this.worker_time_dif) < driftDelta) {
+        return;
+      }
+      console.log(Math.abs(rollingWorkerTimeDiff - this.worker_time_dif));
+      timeAtPrevDiffSample = time;
+      this.worker_time_dif = rollingWorkerTimeDiff;
     };
 
     const tickCallback = (payload) => {
@@ -63,12 +77,12 @@ export class NeoCyclist {
       } = payload;
       this.cps = cps;
       this.cycle = cycle;
+      const time = getTime();
 
-      setTimeReference(num_seconds_at_cps_change, num_seconds_since_cps_change, tickdeadline);
+      setWorkerTimeDiff(num_seconds_at_cps_change, num_seconds_since_cps_change, tickdeadline, time);
 
       processHaps(begin, end, num_cycles_at_cps_change, num_seconds_at_cps_change);
-
-      this.time_at_last_tick_message = this.getTime();
+      this.time_at_last_tick_message = time;
     };
 
     const processHaps = (begin, end, num_cycles_at_cps_change, seconds_at_cps_change) => {

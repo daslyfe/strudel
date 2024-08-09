@@ -46,20 +46,23 @@ export class NeoCyclist {
         this.worker_time_dif = time_dif;
         return;
       }
-
+      const secondsBetweenDiffChecks =  1.5;
       // do nothing if interval has not passed yet
-      if (prevWorkerTimeDiffs.length >= sampleLength && Math.abs(time - timeAtPrevDiffSample) < 2) {
+      if (prevWorkerTimeDiffs.length >= sampleLength && Math.abs(time - timeAtPrevDiffSample) < secondsBetweenDiffChecks) {
         return;
       }
 
+
       const rollingWorkerTimeDiff = averageArray(prevWorkerTimeDiffs);
 
-      const driftDelta = 0.003;
+      // how far the clock can drift before being corrected
+      const driftDelta = 0.002;
 
       if (Math.abs(rollingWorkerTimeDiff - this.worker_time_dif) < driftDelta) {
         return;
       }
-      console.log(Math.abs(rollingWorkerTimeDiff - this.worker_time_dif));
+      console.info(Math.abs(rollingWorkerTimeDiff - this.worker_time_dif))
+ 
       timeAtPrevDiffSample = time;
       this.worker_time_dif = rollingWorkerTimeDiff;
     };

@@ -57,7 +57,7 @@ export class NeoCyclist {
 
       const rollingWorkerTimeDiff = averageArray(prevWorkerTimeDiffs);
 
-      // how far the clock can drift before being corrected
+      // how far the offset can drift before being corrected
       const driftDelta = 0.003;
 
       if (Math.abs(rollingWorkerTimeDiff - this.worker_time_dif) < driftDelta) {

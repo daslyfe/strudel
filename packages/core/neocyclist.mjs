@@ -54,7 +54,7 @@ export class NeoCyclist {
 
       const rollingWorkerTimeDiff = averageArray(prevWorkerTimeDiffs);
 
-      const driftDelta = 0.002;
+      const driftDelta = 0.003;
 
       if (Math.abs(rollingWorkerTimeDiff - this.worker_time_dif) < driftDelta) {
         return;

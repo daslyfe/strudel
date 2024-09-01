@@ -53,12 +53,19 @@ export async function oscTrigger(t_deprecate, hap, currentTime, cps = 1, targetT
   }
   controls.bank && (controls.s = controls.bank + controls.s);
   controls.roomsize && (controls.size = parseNumeral(controls.roomsize));
+  const channels = controls.channels;
+  channels != undefined && (controls.channels = JSON.stringify(channels));
   const keyvals = Object.entries(controls).flat();
+  console.log(keyvals);
   const ts = Math.round(collator.calculateTimestamp(currentTime, targetTime) * 1000);
 
   const message = new OSC.Message('/dirt/play', ...keyvals);
-  const bundle = new OSC.Bundle([message], ts);
+  const channelMessage = new OSC.Message('/dirt/channel', 3, 4);
+  // const message = new OSC.Message('/dirt/play', ...keyvals.map(x => JSON.stringify(x)));
+  const bundle = new OSC.Bundle([message, channelMessage], ts);
+
   bundle.timestamp(ts); // workaround for https://github.com/adzialocha/osc-js/issues/60
+
   osc.send(bundle);
 }
 

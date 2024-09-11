@@ -50,6 +50,12 @@ export function parseControlsFromHap(hap, cps) {
   }
   controls.bank && (controls.s = controls.bank + controls.s);
   controls.roomsize && (controls.size = parseNumeral(controls.roomsize));
+  if (controls.sustain != null) {
+    controls.hold = controls.sustain;
+    delete controls.sustain;
+  }
+
+
   // speed adjustment for CPS is handled on the DSP side in superdirt and pattern side in Strudel,
   // so we need to undo the adjustment before sending the message to superdirt.
   controls.unit === 'c' && controls.speed != null && (controls.speed = controls.speed / cps);
@@ -64,7 +70,6 @@ export async function oscTrigger(t_deprecate, hap, currentTime, cps = 1, targetT
   const osc = await connect();
   const controls = parseControlsFromHap(hap, cps);
   const keyvals = Object.entries(controls).flat();
-
   const ts = Math.round(collator.calculateTimestamp(currentTime, targetTime) * 1000);
   const message = new OSC.Message('/dirt/play', ...keyvals);
   const bundle = new OSC.Bundle([message], ts);

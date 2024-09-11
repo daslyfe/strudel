@@ -373,7 +373,7 @@ export class ClockCollator {
     getTargetClockTime = getUnixTimeSeconds,
     weight = 16,
     offsetDelta = 0.005,
-    checkAfterTime = 2,
+    checkAfterTime = 0.5,
     resetAfterTime = 8,
   }) {
     this.offsetTime;
@@ -417,6 +417,7 @@ export class ClockCollator {
         this.offsetTime = rollingOffsetTime;
       }
     }
+    
 
     return this.offsetTime;
   }

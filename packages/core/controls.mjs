@@ -963,6 +963,60 @@ export const { delaytime, delayt, dt } = registerControl('delaytime', 'delayt', 
  *
  */
 export const { lock } = registerControl('lock');
+
+
+/**
+ * Sets the level of the delay signal.
+ *
+ * When using mininotation, you can also optionally add the 'delaytime' and 'delayfeedback' parameter,
+ * separated by ':'.
+ *
+ *
+ * @name shimmer
+ * @param {number | Pattern} level between 0 and 1
+ * @example
+ * s("bd bd").shimmer("<0 .25 .5 1>")
+ * @example
+ * s("bd bd").shimmer("0.65:0.25:0.9 0.65:0.125:0.7")
+ *
+ */
+export const { shimmer } = registerControl(['shimmer', 'delaytime', 'delayfeedback']);
+
+
+/**
+ * Sets mix of the chorus effect
+ *
+ * When using mininotation, you can also optionally add the 'delaytime' and 'delayfeedback' parameter,
+ * separated by ':'.
+ *
+ *
+ * @name chorus
+ * @param {number | Pattern} level between 0 and 1
+ * @example
+ *
+ */
+export const { chorus } = registerControl(['chorus', 'chorusdepth', 'chorusspeed']);
+
+/**
+ * Sets depth of modulation
+ *
+ * @name chorus
+ * @param {number | Pattern} depth between 0 and 1
+ * @example
+ *
+ */
+export const { chorusdepth } = registerControl(['chorusdepth']);
+
+/**
+ * Sets depth of modulation
+ *
+ * @name chorusspeed
+ * @param {number | Pattern} frequency
+ * @example
+ *
+ */
+export const { chorusspeed } = registerControl(['chorusspeed'], 'chorusfreq');
+
 /**
  * Set detune for stacked voices of supported oscillators
  *

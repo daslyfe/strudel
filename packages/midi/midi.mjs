@@ -112,7 +112,14 @@ Pattern.prototype.midi = function (output) {
       logger(`Midi device disconnected! Available: ${getMidiDeviceNamesString(outputs)}`),
   });
 
-  return this.onTrigger((time_deprecate, hap, currentTime, cps, targetTime) => {
+  return this.withHap(hap => {
+    const {s} = hap.value
+    if (s == null) {
+      return hap;
+    }
+    return hap.setContext({...hap.context, dominantTrigger: false})
+
+  }).onTrigger((time_deprecate, hap, currentTime, cps, targetTime) => {
     if (!WebMidi.enabled) {
       console.log('not enabled');
       return;
@@ -125,9 +132,9 @@ Pattern.prototype.midi = function (output) {
     const timeOffsetString = `+${getEventOffsetMs(targetTime, currentTime) + latencyMs}`;
     // destructure value
     let { note, nrpnn, nrpv, ccn, ccv, midichan = 1, midicmd, gain = 1, velocity = 0.9 } = hap.value;
-
+  
     velocity = gain * velocity;
-
+  
     // note off messages will often a few ms arrive late, try to prevent glitching by subtracting from the duration length
     const duration = (hap.duration.valueOf() / cps) * 1000 - 10;
     if (note != null) {
@@ -160,8 +167,8 @@ Pattern.prototype.midi = function (output) {
     } else if (['continue'].includes(midicmd)) {
       device.sendContinue({ time: timeOffsetString });
     }
-  });
-};
+  
+  })}
 
 let listeners = {};
 const refs = {};

@@ -989,10 +989,8 @@ export const { shimmer } = registerControl(['shimmer', 'delaytime', 'delayfeedba
  * When using mininotation, you can also optionally add the 'delaytime' and 'delayfeedback' parameter,
  * separated by ':'.
  *
- *
  * @name chorus
  * @param {number | Pattern} level between 0 and 1
- * @example
  *
  */
 export const { chorus } = registerControl(['chorus', 'chorusdepth', 'chorusspeed']);
@@ -1002,7 +1000,6 @@ export const { chorus } = registerControl(['chorus', 'chorusdepth', 'chorusspeed
  *
  * @name chorus
  * @param {number | Pattern} depth between 0 and 1
- * @example
  *
  */
 export const { chorusdepth } = registerControl(['chorusdepth']);
@@ -1012,7 +1009,6 @@ export const { chorusdepth } = registerControl(['chorusdepth']);
  *
  * @name chorusspeed
  * @param {number | Pattern} frequency
- * @example
  *
  */
 export const { chorusspeed } = registerControl(['chorusspeed'], 'chorusfreq');

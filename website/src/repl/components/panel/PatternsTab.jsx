@@ -77,7 +77,7 @@ function PatternButtons({ patterns, activePattern, onClick, started }) {
 
 function ActionButton({ children, onClick, label, labelIsHidden }) {
   return (
-    <button className="hover:opacity-50" onClick={onClick} title={label}>
+    <button className="hover:opacity-50 text-nowrap" onClick={onClick} title={label}>
       {labelIsHidden !== true && label}
       {children}
     </button>
@@ -102,7 +102,7 @@ export function PatternsTab({ context }) {
   const autoResetPatternOnChange = !isUdels();
 
   return (
-    <div className="px-4 w-full dark:text-white text-stone-900 space-y-2 pb-4 flex flex-col overflow-hidden max-h-full">
+    <div className="px-4 w-full dark:text-white text-stone-900 space-y-2  flex flex-col overflow-hidden max-h-full">
       <ButtonGroup
         value={patternFilter}
         onChange={(value) => settingsMap.setKey('patternFilter', value)}

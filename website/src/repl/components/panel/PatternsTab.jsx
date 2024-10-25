@@ -77,7 +77,7 @@ function PatternButtons({ patterns, activePattern, onClick, started }) {
 
 function ActionButton({ children, onClick, label, labelIsHidden }) {
   return (
-    <button className="hover:opacity-50 text-nowrap" onClick={onClick} title={label}>
+    <button aria-label={label} className="hover:opacity-50 text-nowrap" onClick={onClick} title={label}>
       {labelIsHidden !== true && label}
       {children}
     </button>
@@ -147,8 +147,7 @@ export function PatternsTab({ context }) {
             <ActionButton
               label="delete-all"
               onClick={() => {
-                const { data } = userPattern.clearAll();
-                updateCodeWindow(data);
+                userPattern.clearAll(updateCodeWindow);
               }}
             />
           </div>

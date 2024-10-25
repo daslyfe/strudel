@@ -118,6 +118,13 @@ export const userPattern = {
     const newPattern = this.create();
     return this.update(newPattern.id, newPattern.data);
   },
+  sortAlphabetical() {
+    const userPatterns = this.getAll();
+    const keys = Object.keys(userPatterns).sort((a, b) => b.localeCompare(a));
+    const sortedPatterns = {};
+    keys.forEach((key) => (sortedPatterns[key] = userPatterns[key]));
+    setUserPatterns(sortedPatterns);
+  },
 
   update(id, data) {
     const userPatterns = this.getAll();
@@ -129,7 +136,7 @@ export const userPattern = {
     const newPattern = this.create();
     return this.update(newPattern.id, { ...newPattern.data, code: data.code });
   },
-  clearAll() {
+  clearAll(onSuccess) {
     confirmDialog(`This will delete all your patterns. Are you really sure?`).then((r) => {
       if (r == false) {
         return;
@@ -138,10 +145,10 @@ export const userPattern = {
       setUserPatterns({});
 
       if (viewingPatternData.collection !== this.collection) {
-        return { id: viewingPatternData.id, data: viewingPatternData };
+        onSuccess({ id: viewingPatternData.id, data: viewingPatternData });
       }
       setActivePattern(null);
-      return this.create();
+      onSuccess(this.create());
     });
   },
   delete(id) {
@@ -170,6 +177,7 @@ export const createPatternID = () => {
 
 export async function importPatterns(fileList) {
   const files = Array.from(fileList);
+
   await Promise.all(
     files.map(async (file, i) => {
       const content = await file.text();
@@ -182,6 +190,7 @@ export async function importPatterns(fileList) {
       }
     }),
   );
+  userPattern.sortAlphabetical();
   logger(`import done!`);
 }
 

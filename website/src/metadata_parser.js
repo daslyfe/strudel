@@ -1,10 +1,19 @@
 const ALLOW_MANY = ['by', 'url', 'genre', 'license'];
 
 export function getMetadata(raw_code) {
-  const comment_regexp = /\/\*([\s\S]*?)\*\/|\/\/(.*)$/gm;
-  const comments = [...raw_code.matchAll(comment_regexp)].map((c) => (c[1] || c[2] || '').trim());
-  const tags = {};
 
+  const tags = {};
+  if (raw_code == null) {
+    return tags
+  }
+  const comment_regexp = /\/\*([\s\S]*?)\*\/|\/\/(.*)$/gm;
+  let comments = []
+  try {
+    comments = [...raw_code.matchAll?.(comment_regexp) ?? []].map((c) => (c[1] || c[2] || '').trim());
+  } catch (e) {
+    console.error(e)
+  }
+ 
   const [prefix, title] = (comments[0] || '').split('"');
   if (prefix.trim() === '' && title !== undefined) {
     tags['title'] = title;

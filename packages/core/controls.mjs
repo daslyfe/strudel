@@ -1056,6 +1056,18 @@ export const { spread } = registerControl('spread');
  *
  */
 export const { dry } = registerControl('dry');
+
+/**
+ * Set amount of effect send
+ *
+ * @name wet
+ * @param {number | Pattern} wet
+ * @example
+ * n("[0,3,7](3,8)").s("sawtooth").room(.7).wet("<0 .5 .75 1>").osc()
+ * @superdirtOnly
+ *
+ */
+export const { wet } = registerControl('wet');
 // TODO: does not seem to do anything
 /*
  * Used when using `begin`/`end` or `chop`/`striate` and friends, to change the fade out time of the 'grain' envelope.

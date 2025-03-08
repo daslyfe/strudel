@@ -42,6 +42,8 @@ export function VerticalPanel({ context }) {
   const settings = useSettings();
   const { activeFooter: tab, isPanelOpen } = settings;
 
+
+
   return (
     <PanelNav
       settings={settings}

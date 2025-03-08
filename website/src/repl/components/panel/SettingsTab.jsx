@@ -105,6 +105,8 @@ export function SettingsTab({ started }) {
     audioDeviceName,
     audioEngineTarget,
     togglePanelTrigger,
+    startupCode
+
   } = useSettings();
   const shouldAlwaysSync = isUdels();
   const canChangeAudioDevice = AudioContext.prototype.setSinkId != null;
@@ -126,6 +128,11 @@ export function SettingsTab({ started }) {
           />
         </FormItem>
       )}
+       <FormItem label='Startup Code'>
+      <textarea  className='bg-background' onChange={(e) => {
+        settingsMap.setKey('startupCode', e.target.value);
+      }} value={startupCode}   cols="30" rows="10"></textarea>
+      </FormItem>
       <FormItem label="Audio Engine Target">
         <AudioEngineTargetSelector
           target={audioEngineTarget}
@@ -285,6 +292,8 @@ export function SettingsTab({ started }) {
           restore default settings
         </button>
       </FormItem>
+
+     
     </div>
   );
 }

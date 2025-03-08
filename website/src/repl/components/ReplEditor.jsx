@@ -4,6 +4,7 @@ import { Code } from '@src/repl/components/Code';
 import UserFacingErrorMessage from '@src/repl/components/UserFacingErrorMessage';
 import { Header } from './Header';
 import { useSettings } from '@src/settings.mjs';
+import { useEffect } from 'react';
 
 // type Props = {
 //  context: replcontext,
@@ -14,6 +15,13 @@ export default function ReplEditor(Props) {
   const { containerRef, editorRef, error, init, pending } = context;
   const settings = useSettings();
   const { panelPosition, isZen } = settings;
+
+  useEffect(() => {
+    if (!settings.startupCode?.length) {
+      return
+    }
+   editorRef.current.repl.evaluate(settings.startupCode)
+  }, [])
 
   return (
     <div className="h-full flex flex-col relative" {...editorProps}>

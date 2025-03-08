@@ -40,6 +40,7 @@ export const defaultSettings = {
   audioEngineTarget: audioEngineTargets.webaudio,
   isButtonRowHidden: false,
   isCSSAnimationDisabled: false,
+  startupCode: '// setCps(140/60/4)'
 };
 
 let search = null;

@@ -219,6 +219,7 @@ export class StrudelMirror {
       cmEditor.style.backgroundColor = 'transparent';
     }
     const settings = codemirrorSettings.get();
+
     this.setFontSize(settings.fontSize);
     this.setFontFamily(settings.fontFamily);
 
@@ -330,6 +331,7 @@ export class StrudelMirror {
     }
   }
   setCode(code) {
+ 
     const changes = { from: 0, to: this.editor.state.doc.length, insert: code };
     this.editor.dispatch({ changes });
   }

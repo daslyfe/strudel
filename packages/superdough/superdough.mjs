@@ -558,6 +558,7 @@ export const superdough = async (value, t, hapDuration, cps = 1) => {
   shapevol = applyGainCurve(shapevol);
   distortvol = applyGainCurve(distortvol);
   delay = applyGainCurve(delay);
+  room = applyGainCurve(room);
   velocity = applyGainCurve(velocity);
   gain *= velocity; // velocity currently only multiplies with gain. it might do other things in the future
 

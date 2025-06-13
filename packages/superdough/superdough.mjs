@@ -449,7 +449,7 @@ function mapChannelNumbers(channels) {
   return (Array.isArray(channels) ? channels : [channels]).map((ch) => ch - 1);
 }
 
-export const superdough = async (value, t, hapDuration, cps, cps = 1) => {
+export const superdough = async (value, t, hapDuration, cps = 1) => {
   const ac = getAudioContext();
   t = typeof t === 'string' && t.startsWith('=') ? Number(t.slice(1)) : ac.currentTime + t;
   let { stretch } = value;

@@ -2441,9 +2441,14 @@ const _chunk = function (n, func, pat, back = false, fast = false) {
   return pat.when(binary_pat, func);
 };
 
-export const { chunk, slowchunk, slowChunk } = register(['chunk', 'slowchunk', 'slowChunk'], function (n, func, pat) {
-  return _chunk(n, func, pat, false, false);
-});
+export const { chunk, slowchunk, slowChunk } = register(
+  ['chunk', 'slowchunk', 'slowChunk'],
+  function (n, func, pat) {
+    return _chunk(n, func, pat, false, false);
+  },
+  true,
+  true,
+);
 
 /**
  * Like `chunk`, but cycles through the parts in reverse order. Known as chunk' in tidalcycles
@@ -2455,9 +2460,14 @@ export const { chunk, slowchunk, slowChunk } = register(['chunk', 'slowchunk', '
  * "0 1 2 3".chunkBack(4, x=>x.add(7))
  * .scale("A:minor").note()
  */
-export const { chunkBack, chunkback } = register(['chunkBack', 'chunkback'], function (n, func, pat) {
-  return _chunk(n, func, pat, true);
-});
+export const { chunkBack, chunkback } = register(
+  ['chunkBack', 'chunkback'],
+  function (n, func, pat) {
+    return _chunk(n, func, pat, true);
+  },
+  true,
+  true,
+);
 
 /**
  * Like `chunk`, but the cycles of the source pattern aren't repeated
@@ -2471,9 +2481,14 @@ export const { chunkBack, chunkback } = register(['chunkBack', 'chunkback'], fun
  * .fastChunk(4, x => x.color('red')).slow(2)
  * .scale("C2:major").note()
  */
-export const { fastchunk, fastChunk } = register(['fastchunk', 'fastChunk'], function (n, func, pat) {
-  return _chunk(n, func, pat, false, true);
-});
+export const { fastchunk, fastChunk } = register(
+  ['fastchunk', 'fastChunk'],
+  function (n, func, pat) {
+    return _chunk(n, func, pat, false, true);
+  },
+  true,
+  true,
+);
 
 // TODO - redefine elsewhere in terms of mask
 export const bypass = register(
@@ -3176,6 +3191,25 @@ export const slice = register(
   },
   false, // turns off auto-patternification
 );
+
+/**
+ *
+ * make something happen on event time
+ * uses browser timeout which is innacurate for audio tasks
+ * @name onTriggerTime
+ * @memberof Pattern
+ *  @returns Pattern
+ * @example
+ * s("bd!8").onTriggerTime((hap) => {console.info(hap)})
+ */
+Pattern.prototype.onTriggerTime = function (func) {
+  return this.onTrigger((t_deprecate, hap, currentTime, cps = 1, targetTime) => {
+    const diff = targetTime - currentTime;
+    window.setTimeout(() => {
+      func(hap);
+    }, diff * 1000);
+  }, false);
+};
 
 /**
  * Works the same as slice, but changes the playback speed of each slice to match the duration of its step.

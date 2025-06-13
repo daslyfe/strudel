@@ -93,7 +93,7 @@ export function Header({ context, embedded = false }) {
           >
             {!isEmbedded && <span>update</span>}
           </button>
-          {!isEmbedded && (
+          {/* !isEmbedded && (
             <button
               title="shuffle"
               className="hover:opacity-50 p-2 flex items-center space-x-1"
@@ -101,7 +101,7 @@ export function Header({ context, embedded = false }) {
             >
               <span> shuffle</span>
             </button>
-          )}
+          ) */}
           {!isEmbedded && (
             <button
               title="share"
